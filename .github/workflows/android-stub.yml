@@ -1,0 +1,38 @@
+name: Android stub (manual)
+
+# Intentionally NOT on push/PR — must not fail desktop cargo CI when SDK missing.
+on:
+  workflow_dispatch:
+
+jobs:
+  assemble-stub:
+    name: assemble mobile + tv debug (if SDK present)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Assemble debug APKs
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleMobileDebug :app:assembleTvDebug
+
+      - name: Upload stub APKs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: channelcast-android-stub-apks
+          path: |
+            android/app/build/outputs/apk/mobile/debug/*.apk
+            android/app/build/outputs/apk/tv/debug/*.apk
+          if-no-files-found: warn

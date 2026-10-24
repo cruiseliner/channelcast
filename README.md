@@ -1,6 +1,6 @@
 # ChannelCast
 
-On-demand multi-channel news app (PointCast-inspired). **Rust core** + CLI + a thin **egui desktop** shell; Android APK (phone + TV) later.
+On-demand multi-channel news app (PointCast-inspired). **Rust core** + CLI + **egui desktop** + **Android scaffold** (phone + TV flavors; APKs not on Releases yet).
 
 **Shipping name:** ChannelCast (not PointCast — that 1990s name was later co-opted).
 
@@ -39,7 +39,7 @@ flowchart LR
   subgraph ui [Thin UI]
     CLI[channelcast CLI]
     Desk[Desktop egui]
-    And[Android APK later]
+    And[Android scaffold]
   end
   RSS --> Fetch
   NWS --> Fetch
@@ -78,7 +78,7 @@ egui/eframe shell — channel list + headlines; opens articles in your browser.
 
 Unpack and run `channelcast-desktop` (`channelcast-desktop.exe` on Windows). Linux needs a display and typical X11/Wayland libs (`libxcb`, `libxkbcommon`).
 
-**Android APK:** not available yet — planned later as a thin shell around `channelcast-core` (UniFFI/JNI), with a separate Android TV leanback build. There is no APK download today.
+**Android APK:** **not on Releases yet.** Scaffold lives under [`android/`](android/) (`mobile` + `tv` flavors, Compose stub, `channelcast://` deep links). See [`docs/ANDROID.md`](docs/ANDROID.md). No APK asset is published until a real build succeeds (needs Android SDK/NDK; agent box has neither).
 
 **Build from source** (any platform with a Rust toolchain):
 
@@ -218,8 +218,9 @@ Fixture-based tests (RSS + Atom parse, cache round-trip, keyword filter) do not 
 1. **Now** — Rust core + CLI (this repo); GitHub Releases for Win/Linux/Mac CLI binaries
 2. **Desktop UI** — Windows first (egui/iced or similar), then Linux/Mac
 3. **Weather / local / spacecoast** — done for ZIP 32920 (NWS MLB + Brevard RSS + KSC/NASA/SpaceX feeds); other ZIPs need their own grid/feeds
-4. **Android APK** — thin shell + `channelcast-core` via UniFFI/JNI
-5. Optional companion bot later for digests — not required for the app
+4. **Android** — scaffold in `android/` (phone + TV flavors); UniFFI bridge + real APKs next — see [docs/ANDROID.md](docs/ANDROID.md)
+5. **Android TV launcher** — `channelcast://open` pill from the existing TV launcher (after TV APK sideload)
+6. Optional companion bot later for digests — not required for the app
 
 ## License
 

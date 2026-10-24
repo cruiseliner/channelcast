@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ChannelCast</string>
+    <string name="stub_subtitle">Android scaffold — core feeds via UniFFI later</string>
+    <string name="channels_heading">Channels</string>
+    <string name="open_deep_link_hint">Deep link: channelcast://open or channelcast://channel/{id}</string>
+</resources>
