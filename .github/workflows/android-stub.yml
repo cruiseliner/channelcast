@@ -6,9 +6,8 @@ on:
 
 jobs:
   assemble-stub:
-    name: assemble mobile + tv debug (if SDK present)
+    name: assemble mobile + tv debug
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -27,12 +26,20 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon :app:assembleMobileDebug :app:assembleTvDebug
 
+      - name: Stage dist names
+        run: |
+          mkdir -p android/dist
+          cp android/app/build/outputs/apk/tv/debug/app-tv-debug.apk \
+            android/dist/channelcast-tv-debug.apk
+          cp android/app/build/outputs/apk/mobile/debug/app-mobile-debug.apk \
+            android/dist/channelcast-mobile-debug.apk
+          ls -lh android/dist
+
       - name: Upload stub APKs
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: channelcast-android-stub-apks
           path: |
-            android/app/build/outputs/apk/mobile/debug/*.apk
-            android/app/build/outputs/apk/tv/debug/*.apk
-          if-no-files-found: warn
+            android/dist/channelcast-tv-debug.apk
+            android/dist/channelcast-mobile-debug.apk
+          if-no-files-found: error

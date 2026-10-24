@@ -1,12 +1,12 @@
-# ChannelCast Android (scaffold)
+# ChannelCast Android (Gradle)
 
-Kotlin Compose stub with **`mobile`** and **`tv`** product flavors.
+Product flavors: **mobile** (phone) and **tv** (Android TV leanback).
 
-See **[docs/ANDROID.md](../docs/ANDROID.md)** for build steps, UniFFI plan, TV launcher deep links (`channelcast://`), and honest blockers.
+See [docs/ANDROID.md](../docs/ANDROID.md) for build, sideload, and launcher deep-link instructions.
 
 ```bash
-./gradlew :app:assembleMobileDebug
 ./gradlew :app:assembleTvDebug
+./gradlew :app:assembleMobileDebug
 ```
 
-No Rust/UniFFI bridge in this scaffold — placeholder channels only.
+APKs: `app/build/outputs/apk/{tv,mobile}/debug/` — also copy to `dist/` (gitignored `*.apk`).

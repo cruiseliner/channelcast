@@ -1,8 +1,8 @@
 # ChannelCast Android
 
-Scaffold toward a **phone APK** (Samsung S25 Ultra target) and a later **Android TV** leanback APK that a custom TV launcher can open (same idea as Guide → TiviMate).
+**Phone APK** (Samsung S25 Ultra) and **Android TV leanback APK** that a custom TV launcher can open (same idea as Guide → TiviMate).
 
-**Status (this pass):** Kotlin Compose stub + `mobile` / `tv` product flavors. **No UniFFI/Rust bridge yet.** **No Release APK assets** until a real APK builds on a machine with the Android SDK (or Actions with SDK).
+**Status:** Kotlin Compose **stub** that lists channels. **No UniFFI/Rust bridge yet** — headlines are toast placeholders. Real **debug APKs build** on a machine with JDK + Android SDK (verified on the agent box).
 
 ## Layout
 
@@ -14,6 +14,7 @@ android/
     src/main/                 # shared Activity, deep links, placeholder channels
     src/mobile/               # LAUNCHER (phone)
     src/tv/                   # LEANBACK_LAUNCHER + leanback feature
+  dist/                       # copy of built APKs (*.apk gitignored)
 docs/ANDROID.md               # this file
 ```
 
@@ -21,60 +22,83 @@ Rust workspace (`channelcast-core`, CLI, desktop) is unchanged. Android is a **s
 
 ## Phone vs TV APKs
 
-| Flavor | Gradle assemble | applicationId | Launcher category | Notes |
-|--------|-----------------|---------------|-------------------|--------|
-| **mobile** | `./gradlew :app:assembleMobileDebug` | `com.cruiseliner.channelcast` (+ `.debug` for debug) | `LAUNCHER` | Phone / S25 Ultra sideload |
-| **tv** | `./gradlew :app:assembleTvDebug` | `…channelcast.tv` (+ `.debug`) | `LEANBACK_LAUNCHER` | 10-foot / D-pad; leanback required |
+| Flavor | Gradle assemble | applicationId (debug) | Launcher category | Notes |
+|--------|-----------------|------------------------|-------------------|--------|
+| **mobile** | `./gradlew :app:assembleMobileDebug` | `com.cruiseliner.channelcast.debug` | `LAUNCHER` | Phone / S25 Ultra sideload |
+| **tv** | `./gradlew :app:assembleTvDebug` | `com.cruiseliner.channelcast.tv.debug` | `LEANBACK_LAUNCHER` | 10-foot / D-pad; leanback required |
 
-Both flavors share `MainActivity` and the `channelcast://` deep-link filters. TV uses a larger Compose layout later; today both show the same stub channel list.
+Release builds drop the `.debug` suffix (`…channelcast` / `…channelcast.tv`).
 
-**Do not** publish fake APKs on GitHub Releases. When an APK actually builds in CI or locally, attach that artifact and document the SHA.
+Both flavors share `MainActivity` and the `channelcast://` deep-link filters.
 
-## Build steps (developer machine)
+**Do not** publish fake APKs on GitHub Releases. Attach only APKs that actually built.
 
-Requires **JDK 17+**, **Android SDK** (API 35), and optionally Android Studio Ladybug+.
+## Build steps (this box / any Linux)
+
+Requires **JDK 17+** (OpenJDK 21 works), **Android SDK** (API 34–35 + build-tools).
 
 ```bash
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64   # or your JDK
+export ANDROID_HOME=$HOME/Android/Sdk
+# First time: install cmdline-tools, then:
+#   yes | sdkmanager --licenses
+#   sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
 cd android
 cp local.properties.example local.properties
-# edit sdk.dir=...
-
-# First time: generate wrapper if gradlew is missing or broken
-# gradle wrapper --gradle-version 8.11.1
+# sdk.dir=/home/you/Android/Sdk
 
 chmod +x gradlew
-./gradlew :app:assembleMobileDebug
-./gradlew :app:assembleTvDebug
+./gradlew --no-daemon :app:assembleTvDebug :app:assembleMobileDebug
+
+mkdir -p dist
+cp app/build/outputs/apk/tv/debug/app-tv-debug.apk dist/channelcast-tv-debug.apk
+cp app/build/outputs/apk/mobile/debug/app-mobile-debug.apk dist/channelcast-mobile-debug.apk
 ```
 
-Outputs (typical):
+Gradle outputs:
 
-- `app/build/outputs/apk/mobile/debug/app-mobile-debug.apk`
 - `app/build/outputs/apk/tv/debug/app-tv-debug.apk`
+- `app/build/outputs/apk/mobile/debug/app-mobile-debug.apk`
 
-Install phone:
+Convenient copies (when present): `android/dist/channelcast-*-debug.apk`
+
+## Install on Android TV (TCL / Google TV)
+
+1. Enable **Developer options** → **USB debugging** (or use wireless adb / a USB stick + file manager that can install APKs).
+2. From a PC on the same network (or USB):
 
 ```bash
-adb install -r app/build/outputs/apk/mobile/debug/app-mobile-debug.apk
+adb connect <tv-ip>:5555    # if wireless
+adb install -r android/dist/channelcast-tv-debug.apk
 ```
 
-Install TV (device/emulator with leanback):
+3. Confirm package:
 
 ```bash
-adb install -r app/build/outputs/apk/tv/debug/app-tv-debug.apk
+adb shell pm path com.cruiseliner.channelcast.tv.debug
+adb shell monkey -p com.cruiseliner.channelcast.tv.debug -c android.intent.category.LEANBACK_LAUNCHER 1
 ```
 
-### Blockers on the ChannelCast CI box / agent VM
+4. Or open via deep link:
 
-As of the scaffold commit:
+```bash
+adb shell am start -a android.intent.action.VIEW -d "channelcast://open" com.cruiseliner.channelcast.tv.debug
+```
 
-- **No JDK** and **no Android SDK/NDK** on the agent box used for early ChannelCast work
-- Therefore **no APK was produced in that environment**
-- Desktop/CLI CI (`cargo test`) must stay green and **must not** depend on the Android SDK
+LEANBACK_LAUNCHER also puts ChannelCast in the Android TV apps row.
 
-## TV launcher deep-link
+### Phone (S25 Ultra)
 
-Custom TV launcher pill (ErsatzTV / Guide-style) can start ChannelCast like TiviMate:
+```bash
+adb install -r android/dist/channelcast-mobile-debug.apk
+```
+
+Package: `com.cruiseliner.channelcast.debug`
+
+## TV launcher deep-link (custom pill)
+
+Wire the News / ChannelCast pill like Guide → TiviMate.
 
 ### Preferred: custom scheme
 
@@ -85,13 +109,12 @@ channelcast://channel/spacecoast
 channelcast://channel/watchman
 ```
 
-Intent (Kotlin / launcher):
+Intent (Kotlin / launcher) — **pin the TV debug package** while using debug APKs:
 
 ```kotlin
 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("channelcast://open")).apply {
     addCategory(Intent.CATEGORY_DEFAULT)
-    // Optional: pin the TV package when both APKs exist
-    setPackage("com.cruiseliner.channelcast.tv")
+    setPackage("com.cruiseliner.channelcast.tv.debug") // drop .debug for release
 }
 startActivity(intent)
 ```
@@ -99,44 +122,42 @@ startActivity(intent)
 ### Explicit component (no scheme)
 
 ```text
-com.cruiseliner.channelcast.tv / com.cruiseliner.channelcast.MainActivity
+com.cruiseliner.channelcast.tv.debug / com.cruiseliner.channelcast.MainActivity
 ```
 
-Debug builds append `.debug` to the applicationId (`…channelcast.tv.debug`).
+```bash
+adb shell am start -n com.cruiseliner.channelcast.tv.debug/com.cruiseliner.channelcast.MainActivity
+```
 
-LEANBACK_LAUNCHER also makes the TV APK appear in the Android TV apps row once installed.
+## What the stub shows
 
-## UniFFI / Rust bridge plan (next, not this scaffold)
+Channel list only (Top, Tech, Entertainment, Markets, Sports, Pro Wrestling, Watchman, Weather, Local, Space Coast). Selecting a channel shows a Toast — live headlines need the UniFFI bridge (next).
 
-Goal: call `channelcast-core` (`headlines_for_channel`, channel list from `channels.toml`) from Kotlin without rewriting fetch logic.
+## UniFFI / Rust bridge plan (next)
 
-Pragmatic path:
+Goal: call `channelcast-core` from Kotlin without rewriting fetch logic.
 
-1. Add a small `crates/channelcast-ffi` crate with [UniFFI](https://mozilla.github.io/uniffi-rs/) `.udl` (or proc-macro) exposing:
-   - `list_channels(config_toml: String) -> Vec<ChannelInfo>`
-   - `headlines(channel_id: String, limit: UInt32) -> Vec<ArticleInfo>`
-2. Build `libchannelcast.so` for `arm64-v8a` (S25 Ultra / most TVs) and optionally `x86_64` (emulator) via `cargo ndk` / `cargo-ndk`.
-3. Wire Gradle: `cargo-ndk` task or Mozilla `uniffi-bindgen-gradle` so `assemble*Debug` produces JNI libs under `android/app/src/main/jniLibs/`.
-4. Replace `PlaceholderChannels` + Toast stub with real FFI calls; keep Compose UI thin (same pattern as egui desktop).
+1. Add `crates/channelcast-ffi` with UniFFI exposing `list_channels` / `headlines`.
+2. Build `libchannelcast.so` for `arm64-v8a` (phones + most TVs) via `cargo-ndk`.
+3. Wire Gradle so `assemble*Debug` packs JNI libs.
+4. Replace `PlaceholderChannels` + Toast with real FFI; keep Compose thin.
 
-**Why not in this pass:** UniFFI + NDK needs the Android NDK, `cargo-ndk`, and a successful `aarch64-linux-android` link. Without SDK/NDK on the box, shipping a half-wired FFI crate would be vaporware. Document first; implement when a machine can compile the `.so`.
-
-Alternative if UniFFI friction is high: thin `extern "C"` + JNI hand bindings for two functions only. Prefer UniFFI if the crate stays small.
+**Why not this pass:** NDK + UniFFI is a separate track. An installable TV APK with channel UI + deep links ships first.
 
 ## CI policy
 
-- Default **CI** job remains `cargo test --workspace` only (desktop deps on Linux).
-- Optional workflow **Android stub** is `workflow_dispatch` only and **continues / skips** when the SDK is unavailable — it must never fail desktop CI on push to `main`.
-- Release workflow does **not** upload Android assets until an APK build step succeeds.
+- Default **CI** stays `cargo test --workspace` only.
+- Optional workflow [`.github/workflows/android-stub.yml`](../.github/workflows/android-stub.yml) is **`workflow_dispatch` only** — builds mobile + tv debug APKs and uploads artifacts. It must never gate desktop CI on push to `main`.
+- Release workflow attaches Android assets **only** when a real APK build succeeds (e.g. tag `v*-android` or a dedicated release).
 
 ## Roadmap (Android-specific)
 
-1. **Done (scaffold):** Gradle project, mobile + tv flavors, stub UI, deep links, this doc
-2. **Local APK:** Build on a machine with Android Studio; sideload to S25 Ultra
-3. **UniFFI bridge:** `channelcast-ffi` + NDK `arm64-v8a`
-4. **TV UI:** Compose for TV / leanback rows (10-foot focus), real banner asset
-5. **Launcher pill:** Wire `channelcast://open` in the existing TV launcher
-6. **CI APK:** Actions job with `android-actions/setup-android` producing artifacts; then (and only then) optional Release assets
+1. **Done:** Gradle project, mobile + tv flavors, stub UI, deep links, local APK build
+2. **Done (this pass):** Real `assembleTvDebug` / `assembleMobileDebug` on agent box; dist copies; launcher docs
+3. **Next:** Sideload TV APK + wire launcher pill on Adam’s TCL
+4. **Next:** UniFFI bridge + NDK `arm64-v8a`
+5. **Later:** Compose for TV / leanback rows (10-foot focus), real banner asset
+6. **Later:** CI Release assets for APKs on every tagged Android release
 
 ## License
 

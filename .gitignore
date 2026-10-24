@@ -35,3 +35,6 @@ android/.cxx/
 *.aab
 *.ap_
 *.dex
+
+android/.kotlin/
+android/dist/*.apk
