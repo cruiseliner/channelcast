@@ -693,7 +693,7 @@ dependencies = [
 
 [[package]]
 name = "channelcast-cli"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "channelcast-core",
@@ -703,7 +703,7 @@ dependencies = [
 
 [[package]]
 name = "channelcast-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "feed-rs",
@@ -718,7 +718,7 @@ dependencies = [
 
 [[package]]
 name = "channelcast-desktop"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "channelcast-core",

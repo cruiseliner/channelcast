@@ -120,6 +120,8 @@ cargo run -p channelcast-desktop
 
 CI installs those Linux GUI build deps so `cargo test --workspace` stays green. Prebuilt desktop binaries ship on [Releases](https://github.com/cruiseliner/channelcast/releases) from **v0.1.1** onward (same platforms as the CLI).
 
+**v0.1.2:** USA Today sources for top (nation/politics), tech, and a new entertainment channel; Android phone + TV scaffold docs in [`docs/ANDROID.md`](docs/ANDROID.md) (stub only — no APKs yet).
+
 
 Optional flags:
 
