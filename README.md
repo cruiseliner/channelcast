@@ -27,6 +27,7 @@ flowchart LR
   subgraph sources [Sources]
     RSS[RSS / Atom]
     NWS[NWS forecast JSON + alerts Atom]
+    FT[Florida Today HTML / sitemap personal]
   end
   subgraph core [channelcast-core]
     Cfg[channels.toml]
@@ -42,6 +43,7 @@ flowchart LR
   end
   RSS --> Fetch
   NWS --> Fetch
+  FT --> Fetch
   Cfg --> Fetch --> Kw --> Rank --> Store
   Store --> CLI
   Store -.-> Desk
@@ -83,8 +85,8 @@ Optional flags:
 | `prowrestling` | on, personal | Fightful, F4W Online |
 | `watchman` | **disabled by default**, personal | Jerusalem Post frontpage, Times of Israel, BBC Middle East + keyword filter |
 | `weather` | on, personal | ZIP **32920** Cape Canaveral FL — NWS MLB grid 56,65 forecast JSON + alerts Atom zone FLZ747 |
-| `local` | on, personal | Space Coast Daily (Brevard community, ZIP 32920) |
-| `spacecoast` | on, personal | NASA Kennedy + Artemis blogs, Spaceflight Now, NASASpaceflight + KSC/SpaceX/Blue Origin keywords |
+| `local` | on, personal | Space Coast Daily + Florida Today `/space/` HTML (cookie optional) |
+| `spacecoast` | on, personal | NASA Kennedy + Artemis, Spaceflight Now, NASASpaceflight + Florida Today space listing/sitemap (cookie optional) + KSC/SpaceX/Blue Origin keywords |
 
 ### Feed verification notes
 
@@ -115,11 +117,41 @@ Optional flags:
 | CNN Middle East RSS | failed to connect from this environment |
 | Blue Origin / SpaceX official RSS | no usable public feed (429/HTML) |
 | NASA commercialcrew blog `/feed/` | 200 but HTML, not RSS |
-| Florida Today space RSS paths | 404 |
+| Florida Today space RSS paths | 404 — **workaround:** personal HTML `/space/` + `news-sitemap.xml` space filter (cookie optional for full body) |
 
 **Needs RSS or licensed API (not scraped in v0.1):** israel365news, other “watchman-style” prophecy portals without a public feed. Add URLs to `channels.toml` when they expose RSS.
 
 Edit `channels.toml` to add feeds, flip `enabled`, or change `watchman.keywords` (Turkey, Gog/Magog, Damascus, temple, red heifer, Ezekiel, … — editable config, not hardcoded theology).
+
+
+## Personal Florida Today (subscriber)
+
+Florida Today does not expose a usable public RSS feed. ChannelCast’s **personal** `local` / `spacecoast` channels can pull headlines from:
+
+- `https://www.floridatoday.com/space/` (HTML listing)
+- `https://www.floridatoday.com/news-sitemap.xml#space` (news sitemap, space-path filter)
+
+This is for **your own subscriber account** reading on your machine — not a public scrape service. Gannett `robots.txt` disallows many AI crawlers; ChannelCast identifies itself as `ChannelCast/0.1 (+https://github.com/cruiseliner/channelcast; personal subscriber use)` and rate-limits authenticated article fetches.
+
+### Cookie setup (optional — unlocks fuller article text)
+
+Titles and blurbs work **without** a cookie. To unlock fuller article body text behind the paywall, supply a session Cookie from a browser where you are already signed in (do **not** put your password in the repo or in `channels.toml`):
+
+1. Sign in at [login.floridatoday.com](https://login.floridatoday.com/PBRE-GUP/authenticate/) in your browser.
+2. Export cookies for `floridatoday.com` (browser extension → Netscape `cookies.txt`, or copy the `Cookie` request header from DevTools).
+3. Save to a **gitignored** path, e.g. `.channelcast/floridatoday.cookies`, **or** set:
+
+```bash
+export CHANNELCAST_FLORIDATODAY_COOKIE='name=value; other=value'
+# or
+export CHANNELCAST_FLORIDATODAY_COOKIE_FILE="$HOME/.channelcast/floridatoday.cookies"
+```
+
+Precedence: `CHANNELCAST_FLORIDATODAY_COOKIE` → `CHANNELCAST_FLORIDATODAY_COOKIE_FILE` → `.channelcast/floridatoday.cookies` → `~/.channelcast/floridatoday.cookies`.
+
+If no cookie is found, ChannelCast logs a short note and still returns listing/sitemap titles (other feeds on the channel keep working).
+
+**Never commit** `*.cookies`, `.channelcast/`, or `.env` files. The public CLI does not automate password login.
 
 ## Development
 

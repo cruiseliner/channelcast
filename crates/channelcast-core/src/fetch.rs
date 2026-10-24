@@ -1,5 +1,6 @@
 use crate::error::{Error, Result};
 use crate::model::Article;
+use crate::floridatoday::{fetch_floridatoday, is_floridatoday_url};
 use crate::nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
 use feed_rs::parser;
 
@@ -7,6 +8,10 @@ const USER_AGENT: &str = "ChannelCast/0.1 (+https://github.com/cruiseliner/chann
 
 /// Fetch a feed URL over HTTP and parse RSS/Atom — or NWS forecast JSON — into articles.
 pub fn fetch_feed(url: &str, channel_id: &str) -> Result<Vec<Article>> {
+    if is_floridatoday_url(url) {
+        // Personal subscriber HTML/sitemap path (cookie optional; see floridatoday module).
+        return fetch_floridatoday(url, channel_id);
+    }
     let client = reqwest::blocking::Client::builder()
         .user_agent(USER_AGENT)
         .timeout(std::time::Duration::from_secs(30))

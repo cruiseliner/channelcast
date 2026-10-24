@@ -1,5 +1,6 @@
 use channelcast_core::{
-    dedupe_and_rank, parse_feed_bytes, parse_nws_forecast_bytes, Cache, ChannelConfig,
+    dedupe_and_rank, parse_article_body_bytes, parse_feed_bytes, parse_listing_bytes,
+    parse_nws_forecast_bytes, parse_sitemap_bytes, Cache, ChannelConfig,
 };
 
 #[test]
@@ -78,4 +79,55 @@ fn parses_nws_forecast_fixture() {
     assert!(articles[0].url.contains("#period-"));
     assert!(articles[0].summary.as_deref().unwrap_or("").contains("Starts "));
     assert!(articles[0].source.contains("MLB"));
+}
+
+
+#[test]
+fn parses_floridatoday_space_listing() {
+    let bytes = include_bytes!("fixtures/floridatoday_space.html");
+    let articles = parse_listing_bytes(bytes, "spacecoast").unwrap();
+    assert!(articles.len() >= 5, "got {}", articles.len());
+    assert!(articles.iter().any(|a| a.title.contains("Artemis")));
+    assert!(articles[0].url.starts_with("https://www.floridatoday.com/"));
+    assert_eq!(articles[0].source, "Florida Today");
+    // list tiles carry data-c-br blurbs
+    assert!(articles.iter().any(|a| a.summary.as_deref().unwrap_or("").len() > 20));
+}
+
+#[test]
+fn parses_floridatoday_sitemap_space_filter() {
+    let bytes = include_bytes!("fixtures/floridatoday_sitemap_space.xml");
+    let articles = parse_sitemap_bytes(bytes, "spacecoast").unwrap();
+    assert!(!articles.is_empty());
+    assert!(articles.iter().all(|a| {
+        let u = a.url.to_ascii_lowercase();
+        u.contains("/tech/science/space/") || u.contains("spacex") || u.contains("nasa")
+    }));
+    assert!(articles.iter().any(|a| a.published.is_some()));
+}
+
+#[test]
+fn parses_floridatoday_article_body_fixture() {
+    let bytes = include_bytes!("fixtures/floridatoday_article.html");
+    let summary = parse_article_body_bytes(bytes).expect("summary");
+    assert!(summary.len() > 40, "{summary}");
+}
+
+#[test]
+fn defaults_include_floridatoday_on_spacecoast_and_local() {
+    let cfg = ChannelConfig::defaults().unwrap();
+    let sc = cfg.get("spacecoast").unwrap();
+    assert!(sc
+        .feeds
+        .iter()
+        .any(|u| u.contains("floridatoday.com/space")));
+    assert!(sc
+        .feeds
+        .iter()
+        .any(|u| u.contains("news-sitemap.xml")));
+    let local = cfg.get("local").unwrap();
+    assert!(local
+        .feeds
+        .iter()
+        .any(|u| u.contains("floridatoday.com/space")));
 }

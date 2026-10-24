@@ -17,3 +17,9 @@ Thumbs.db
 
 # Scratch
 tmp/
+
+# Secrets / sessions — never commit
+*.cookies
+floridatoday.cookies
+.env
+.env.*

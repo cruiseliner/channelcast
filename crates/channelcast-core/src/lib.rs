@@ -1,10 +1,11 @@
 //! ChannelCast core library: channel config, RSS/Atom fetch, SQLite cache, ranking.
-//! Minimal NWS forecast JSON support for the weather channel.
+//! Minimal NWS forecast JSON + personal Florida Today HTML/sitemap support.
 
 pub mod cache;
 pub mod config;
 pub mod error;
 pub mod fetch;
+pub mod floridatoday;
 pub mod model;
 pub mod nws;
 pub mod rank;
@@ -13,6 +14,9 @@ pub use cache::Cache;
 pub use config::{filter_by_keywords, Channel, ChannelConfig};
 pub use error::{Error, Result};
 pub use fetch::{fetch_channel_feeds, fetch_feed, parse_feed_bytes};
+pub use floridatoday::{
+    is_floridatoday_url, parse_article_body_bytes, parse_listing_bytes, parse_sitemap_bytes,
+};
 pub use model::Article;
 pub use nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
 pub use rank::dedupe_and_rank;

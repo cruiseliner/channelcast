@@ -122,20 +122,23 @@ feeds = [
 [[channels]]
 id = "local"
 name = "Local"
-description = "Brevard / Space Coast community news for ZIP 32920 (Cape Canaveral area). Free public RSS only."
+description = "Brevard / Space Coast community news for ZIP 32920 (Cape Canaveral area). Free RSS + personal Florida Today /space/ HTML (cookie optional)."
 enabled = true
 personal = true
 feeds = [
   "https://spacecoastdaily.com/feed/",
+  # Personal subscriber HTML listing (not RSS). Cookie optional — titles without auth.
+  "https://www.floridatoday.com/space/",
 ]
-# Industry / KSC launch coverage lives in the `spacecoast` channel.
-# Tried / dropped (2026-10-24): Florida Today RSS 404/HTML; Orlando Sentinel 403;
+# Industry / KSC launch coverage also in `spacecoast`.
+# Tried / dropped (2026-10-24): Florida Today RSS 404; Orlando Sentinel 403;
 # Brevard Times 403; ClickOrlando / WESH Arc RSS → HTML; Space Coast Live 404.
+# Florida Today: use listing HTML + optional Cookie (see README). Never commit cookies.
 
 [[channels]]
 id = "spacecoast"
 name = "Space Coast"
-description = "NASA / KSC, SpaceX, Blue Origin, Merritt Island — items that expand or impact Kennedy Space Center. Free public RSS only."
+description = "NASA / KSC, SpaceX, Blue Origin, Merritt Island — items that expand or impact Kennedy Space Center. Free RSS + personal Florida Today space HTML/sitemap (cookie optional)."
 enabled = true
 personal = true
 feeds = [
@@ -143,10 +146,14 @@ feeds = [
   "https://blogs.nasa.gov/artemis/feed/",
   "https://spaceflightnow.com/feed/",
   "https://www.nasaspaceflight.com/feed/",
+  # Personal Florida Today: section listing + news-sitemap (space-path filter). Not RSS.
+  # Cookie optional (CHANNELCAST_FLORIDATODAY_COOKIE or .channelcast/floridatoday.cookies).
+  "https://www.floridatoday.com/space/",
+  "https://www.floridatoday.com/news-sitemap.xml#space",
 ]
 # Also verified 200: nasa.gov/rss/dyn/breaking_news.rss, spacenews.com/feed/, space.com/feeds/news
 # Dropped: blogs.nasa.gov/commercialcrew/feed/ (200 HTML); Blue Origin / SpaceX official RSS (no usable feed);
-# Florida Today space paths 404.
+# Florida Today RSS paths 404 — HTML/sitemap path added instead (personal subscriber use).
 # Optional tighter filter — edit freely:
 keywords = [
   "kennedy",
