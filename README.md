@@ -91,7 +91,7 @@ Optional flags:
 | URL / site | Result |
 |------------|--------|
 | PWInsider RSS paths | 404 |
-| israel365news / breakingisraelnews (`israel365news.com`) | Cloudflare challenge (403) from box/CLI — wanted for watchman; feed URL noted as pending in `channels.toml` |
+| israel365news direct `/feed/` | Cloudflare 403 from CLI — **workaround:** Google News `site:israel365news.com` RSS in watchman feeds |
 | ProphecyNewsWatch feed URLs | 404 |
 | watch.org/feed | 404 |
 | Haaretz cmlink | 200 but HTML, not RSS |

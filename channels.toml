@@ -63,10 +63,11 @@ feeds = [
   "https://www.timesofisrael.com/feed/",
   "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml",
   "https://www.israeltoday.co.il/feed/",
+  # Israel365 direct feed is Cloudflare-gated; Google News site: proxy works for CLI.
+  "https://news.google.com/rss/search?q=site:israel365news.com&hl=en-US&gl=US&ceid=US:en",
 ]
-# Pending (Cloudflare / WAF 403 from automated fetch — add when reachable or via local OPML):
-#   https://israel365news.com/feed/
-#   https://breakingisraelnews.com/feed/
+# Prefer direct if CF clears: https://israel365news.com/feed/
+# Also: https://breakingisraelnews.com/feed/
 # Case-insensitive match against title + summary. Edit freely.
 # Tight v1: dropped broad israel/jerusalem (and war-flood terms that match most ME headlines).
 # Geographic watch + prophecy lexicon only — edit freely.
