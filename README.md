@@ -111,14 +111,14 @@ Binary name: **`channelcast`**.
 
 ## Desktop UI (v0.1)
 
-Minimal egui/eframe window: enabled channels on the left, headlines on the right, **Open in browser** for each article. Uses the same `channelcast-core` fetch path as the CLI (respects `enabled` / personal flags like `channelcast channels`).
+PointCast-inspired egui shell: dark channel strip on the left (● marks personal), headlines with **source · time** on the right, status bar for fetch state. Keyboard: **j/k** or arrows move headlines, **Enter** opens, **[ ]** switch channel, **r** refresh. Click a headline to open in the browser. Same `channelcast-core` path as the CLI (`enabled` channels only — entertainment, weather, local, Space Coast included when enabled).
 
 ```bash
 # from repo root (needs a display; Linux needs libxcb + libxkbcommon -dev packages)
 cargo run -p channelcast-desktop
 ```
 
-CI installs those Linux GUI build deps so `cargo test --workspace` stays green. Prebuilt desktop binaries ship on [Releases](https://github.com/cruiseliner/channelcast/releases) from **v0.1.1** onward (same platforms as the CLI).
+CI installs those Linux GUI build deps so `cargo test --workspace` stays green. Prebuilt desktop binaries ship on [Releases](https://github.com/cruiseliner/channelcast/releases) from **v0.1.1** onward (same platforms as the CLI). Preview: [`docs/desktop-preview.png`](docs/desktop-preview.png) when present.
 
 **v0.1.2:** USA Today sources for top (nation/politics), tech, and a new entertainment channel; Android phone + TV scaffold docs in [`docs/ANDROID.md`](docs/ANDROID.md) (stub only — no APKs yet).
 
