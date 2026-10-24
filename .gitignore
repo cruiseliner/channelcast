@@ -1,0 +1,16 @@
+# Rust
+/target/
+**/target/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local data
+*.db
+*.db-journal
+.channelcast/

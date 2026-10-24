@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Sample Atom Feed</title>
+  <link href="https://example.org/"/>
+  <updated>2026-10-22T10:00:00Z</updated>
+  <id>urn:uuid:fixture-atom</id>
+  <entry>
+    <title>Atom Entry One</title>
+    <link href="https://example.org/one"/>
+    <id>urn:uuid:entry-1</id>
+    <updated>2026-10-22T09:00:00Z</updated>
+    <summary>Atom summary</summary>
+  </entry>
+  <entry>
+    <title>Atom Entry Two</title>
+    <link href="https://example.org/two"/>
+    <id>urn:uuid:entry-2</id>
+    <updated>2026-10-21T09:00:00Z</updated>
+  </entry>
+</feed>

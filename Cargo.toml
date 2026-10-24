@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/channelcast-core",
+    "crates/channelcast-cli",
+]
+default-members = ["crates/channelcast-cli", "crates/channelcast-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/cruiseliner/channelcast"
+authors = ["Adam Karba (cruiseliner)"]
+
+[workspace.dependencies]
+channelcast-core = { path = "crates/channelcast-core" }
+anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+clap = { version = "4", features = ["derive"] }
+feed-rs = "2"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+toml = "0.8"
+url = "2"

@@ -1,0 +1,100 @@
+# ChannelCast v0.1 default channels.
+# Every feed URL below returned HTTP 200 when committed (2026-10-24).
+# Edit freely; stub channels document next steps and have no feeds yet.
+#
+# Personal / optional channels: set enabled = false to hide from default
+# CLI listing unless --all. Public repo does not endorse any outlet's views.
+
+[[channels]]
+id = "top"
+name = "Top"
+description = "World / general headlines"
+feeds = [
+  "https://feeds.bbci.co.uk/news/world/rss.xml",
+  "https://feeds.npr.org/1001/rss.xml",
+]
+
+[[channels]]
+id = "tech"
+name = "Tech"
+description = "Technology and software"
+feeds = [
+  "https://hnrss.org/frontpage",
+  "https://feeds.arstechnica.com/arstechnica/index",
+]
+
+[[channels]]
+id = "markets"
+name = "Markets"
+description = "Business and markets"
+feeds = [
+  "https://feeds.bbci.co.uk/news/business/rss.xml",
+  "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+]
+
+[[channels]]
+id = "sports"
+name = "Sports"
+description = "Sports headlines"
+feeds = [
+  "https://feeds.bbci.co.uk/sport/rss.xml",
+  "https://www.espn.com/espn/rss/news",
+]
+
+[[channels]]
+id = "prowrestling"
+name = "Pro Wrestling"
+description = "Pro wrestling news (personal). Free public RSS only."
+enabled = true
+personal = true
+feeds = [
+  "https://www.fightful.com/feed",
+  "https://www.f4wonline.com/feed",
+]
+
+[[channels]]
+id = "watchman"
+name = "Watchman"
+description = "Personal End Times / Israel geopolitics aggregator. Allowlisted news RSS + keyword filter only — not LLM prophecy. Public repo ≠ endorsement."
+enabled = false
+personal = true
+feeds = [
+  "https://www.jpost.com/rss/rssfeedsfrontpage.aspx",
+  "https://www.timesofisrael.com/feed/",
+  "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml",
+]
+# Case-insensitive match against title + summary. Edit freely.
+keywords = [
+  "turkey",
+  "turkish",
+  "gog",
+  "magog",
+  "damascus",
+  "syria",
+  "temple",
+  "red heifer",
+  "ezekiel",
+  "daniel",
+  "revelation",
+  "jerusalem",
+  "israel",
+  "iran",
+  "hezbollah",
+  "hamas",
+  "gaza",
+  "prophecy",
+  "armageddon",
+  "megiddo",
+]
+
+[[channels]]
+id = "weather"
+name = "Weather"
+description = "Local forecast (stub). Next: National Weather Service API — https://www.weather.gov/documentation/services-web-api — needs lat/lon."
+feeds = []
+
+[[channels]]
+id = "local"
+name = "Local"
+description = "Local news (stub). Needs your city / ZIP to pick a regional RSS or NWS zone."
+feeds = []

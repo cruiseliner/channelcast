@@ -1,0 +1,20 @@
+[package]
+name = "channelcast-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "ChannelCast core: channels, RSS/Atom fetch, cache, rank"
+
+[dependencies]
+chrono.workspace = true
+feed-rs.workspace = true
+reqwest.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+url.workspace = true
+
+[dev-dependencies]

@@ -1,0 +1,19 @@
+[package]
+name = "channelcast-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "ChannelCast CLI — fetch and list headlines by channel"
+default-run = "channelcast"
+
+[[bin]]
+name = "channelcast"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+channelcast-core.workspace = true
+chrono.workspace = true
+clap.workspace = true

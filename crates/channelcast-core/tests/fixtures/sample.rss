@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Sample Tech Feed</title>
+    <link>https://example.com/</link>
+    <description>Fixture RSS</description>
+    <item>
+      <title>First Story</title>
+      <link>https://example.com/stories/1</link>
+      <description>Hello RSS</description>
+      <pubDate>Mon, 20 Oct 2026 12:00:00 GMT</pubDate>
+      <guid>https://example.com/stories/1</guid>
+    </item>
+    <item>
+      <title>Second Story</title>
+      <link>https://example.com/stories/2</link>
+      <pubDate>Tue, 21 Oct 2026 15:30:00 GMT</pubDate>
+      <guid>https://example.com/stories/2</guid>
+    </item>
+  </channel>
+</rss>
