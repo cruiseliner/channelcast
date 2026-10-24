@@ -100,14 +100,75 @@ keywords = [
   "jesus, son of david",
 ]
 
+# Weather / local keyed to ZIP 32920 (Cape Canaveral / Cocoa Beach, Brevard County, FL).
+# Geocode: 28.3903,-80.6043 → NWS office MLB grid 56,65; forecast zone FLZ747; county FLC009.
+# Points: https://api.weather.gov/points/28.3903,-80.6043 (HTTP 200, 2026-10-24)
+
 [[channels]]
 id = "weather"
 name = "Weather"
-description = "Local forecast (stub). Next: National Weather Service API — https://www.weather.gov/documentation/services-web-api — needs lat/lon."
-feeds = []
+description = "NWS forecast + alerts for ZIP 32920 (Cape Canaveral / Cocoa Beach FL). Forecast is NWS JSON (core nws module); alerts are Atom."
+enabled = true
+personal = true
+feeds = [
+  # Active alerts first (Atom — feed-rs); dated so they rank above forecast periods
+  "https://api.weather.gov/alerts/active.atom?zone=FLZ747",
+  # 7-day forecast JSON → Article per period (ChannelCast nws parser)
+  "https://api.weather.gov/gridpoints/MLB/56,65/forecast",
+]
+# Also useful: hourly https://api.weather.gov/gridpoints/MLB/56,65/forecast/hourly
+# Point alerts: https://api.weather.gov/alerts/active.atom?point=28.3903,-80.6043
 
 [[channels]]
 id = "local"
 name = "Local"
-description = "Local news (stub). Needs your city / ZIP to pick a regional RSS or NWS zone."
-feeds = []
+description = "Brevard / Space Coast community news for ZIP 32920 (Cape Canaveral area). Free public RSS only."
+enabled = true
+personal = true
+feeds = [
+  "https://spacecoastdaily.com/feed/",
+]
+# Industry / KSC launch coverage lives in the `spacecoast` channel.
+# Tried / dropped (2026-10-24): Florida Today RSS 404/HTML; Orlando Sentinel 403;
+# Brevard Times 403; ClickOrlando / WESH Arc RSS → HTML; Space Coast Live 404.
+
+[[channels]]
+id = "spacecoast"
+name = "Space Coast"
+description = "NASA / KSC, SpaceX, Blue Origin, Merritt Island — items that expand or impact Kennedy Space Center. Free public RSS only."
+enabled = true
+personal = true
+feeds = [
+  "https://blogs.nasa.gov/kennedy/feed/",
+  "https://blogs.nasa.gov/artemis/feed/",
+  "https://spaceflightnow.com/feed/",
+  "https://www.nasaspaceflight.com/feed/",
+]
+# Also verified 200: nasa.gov/rss/dyn/breaking_news.rss, spacenews.com/feed/, space.com/feeds/news
+# Dropped: blogs.nasa.gov/commercialcrew/feed/ (200 HTML); Blue Origin / SpaceX official RSS (no usable feed);
+# Florida Today space paths 404.
+# Optional tighter filter — edit freely:
+keywords = [
+  "kennedy",
+  "ksc",
+  "merritt island",
+  "cape canaveral",
+  "spacex",
+  "blue origin",
+  "falcon",
+  "starship",
+  "dragon",
+  "artemis",
+  "sls",
+  "orion",
+  "new glenn",
+  "starliner",
+  "commercial crew",
+  "launch complex",
+  "lc-39",
+  "lc-40",
+  "lc-41",
+  "pad 39",
+  "starlink",
+  "crew-",
+]

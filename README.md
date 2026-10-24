@@ -26,7 +26,7 @@ On-demand multi-channel news app (PointCast-inspired). **Rust core** first; Wind
 flowchart LR
   subgraph sources [Sources]
     RSS[RSS / Atom]
-    NWS[NWS API later]
+    NWS[NWS forecast JSON + alerts Atom]
   end
   subgraph core [channelcast-core]
     Cfg[channels.toml]
@@ -41,7 +41,7 @@ flowchart LR
     And[Android APK]
   end
   RSS --> Fetch
-  NWS -.-> Fetch
+  NWS --> Fetch
   Cfg --> Fetch --> Kw --> Rank --> Store
   Store --> CLI
   Store -.-> Desk
@@ -58,6 +58,9 @@ cargo run -p channelcast-cli -- headlines tech
 cargo run -p channelcast-cli -- headlines top -n 10
 cargo run -p channelcast-cli -- headlines prowrestling
 cargo run -p channelcast-cli -- headlines watchman   # works even when disabled in listing
+cargo run -p channelcast-cli -- headlines weather    # NWS Cape Canaveral / ZIP 32920
+cargo run -p channelcast-cli -- headlines local
+cargo run -p channelcast-cli -- headlines spacecoast
 cargo run -p channelcast-cli -- fetch markets
 ```
 
@@ -79,12 +82,26 @@ Optional flags:
 | `sports` | on | BBC Sport, ESPN Top |
 | `prowrestling` | on, personal | Fightful, F4W Online |
 | `watchman` | **disabled by default**, personal | Jerusalem Post frontpage, Times of Israel, BBC Middle East + keyword filter |
-| `weather` | stub | needs lat/lon → [NWS API](https://www.weather.gov/documentation/services-web-api) |
-| `local` | stub | needs city / ZIP |
+| `weather` | on, personal | ZIP **32920** Cape Canaveral FL — NWS MLB grid 56,65 forecast JSON + alerts Atom zone FLZ747 |
+| `local` | on, personal | Space Coast Daily (Brevard community, ZIP 32920) |
+| `spacecoast` | on, personal | NASA Kennedy + Artemis blogs, Spaceflight Now, NASASpaceflight + KSC/SpaceX/Blue Origin keywords |
 
 ### Feed verification notes
 
 **Committed (200 + RSS/Atom):** Fightful, F4W Online, JPost frontpage RSS, Times of Israel, BBC Middle East, plus the general channels above.
+
+**Weather / local (ZIP 32920, Cape Canaveral / Cocoa Beach FL):**
+
+| Endpoint | Result |
+|----------|--------|
+| `api.weather.gov/points/28.3903,-80.6043` | 200 → office **MLB**, grid **56,65**, zone **FLZ747** |
+| `.../gridpoints/MLB/56,65/forecast` | 200 GeoJSON — parsed by `channelcast_core::nws` (not RSS) |
+| `.../alerts/active.atom?zone=FLZ747` | 200 Atom — normal feed-rs path |
+| `spacecoastdaily.com/feed/` | 200 RSS (local) |
+| `blogs.nasa.gov/kennedy/feed/` | 200 RSS (spacecoast) |
+| `blogs.nasa.gov/artemis/feed/` | 200 RSS (spacecoast) |
+| `spaceflightnow.com/feed/` | 200 RSS (spacecoast) |
+| `nasaspaceflight.com/feed/` | 200 RSS (spacecoast) |
 
 **Tried and dropped:**
 
@@ -96,6 +113,9 @@ Optional flags:
 | watch.org/feed | 404 |
 | Haaretz cmlink | 200 but HTML, not RSS |
 | CNN Middle East RSS | failed to connect from this environment |
+| Blue Origin / SpaceX official RSS | no usable public feed (429/HTML) |
+| NASA commercialcrew blog `/feed/` | 200 but HTML, not RSS |
+| Florida Today space RSS paths | 404 |
 
 **Needs RSS or licensed API (not scraped in v0.1):** israel365news, other “watchman-style” prophecy portals without a public feed. Add URLs to `channels.toml` when they expose RSS.
 
@@ -114,10 +134,9 @@ Fixture-based tests (RSS + Atom parse, cache round-trip, keyword filter) do not 
 
 1. **Now** — Rust core + CLI (this repo)
 2. **Desktop UI** — Windows first (egui/iced or similar), then Linux/Mac
-3. **Weather** — NWS API once location is set
-4. **Local** — regional RSS keyed off city/ZIP
-5. **Android APK** — thin shell + `channelcast-core` via UniFFI/JNI
-6. Optional companion bot later for digests — not required for the app
+3. **Weather / local / spacecoast** — done for ZIP 32920 (NWS MLB + Brevard RSS + KSC/NASA/SpaceX feeds); other ZIPs need their own grid/feeds
+4. **Android APK** — thin shell + `channelcast-core` via UniFFI/JNI
+5. Optional companion bot later for digests — not required for the app
 
 ## License
 

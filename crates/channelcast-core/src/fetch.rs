@@ -1,17 +1,26 @@
 use crate::error::{Error, Result};
 use crate::model::Article;
+use crate::nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
 use feed_rs::parser;
 
 const USER_AGENT: &str = "ChannelCast/0.1 (+https://github.com/cruiseliner/channelcast)";
 
-/// Fetch a feed URL over HTTP and parse RSS or Atom into articles.
+/// Fetch a feed URL over HTTP and parse RSS/Atom — or NWS forecast JSON — into articles.
 pub fn fetch_feed(url: &str, channel_id: &str) -> Result<Vec<Article>> {
     let client = reqwest::blocking::Client::builder()
         .user_agent(USER_AGENT)
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
-    let response = client.get(url).send()?.error_for_status()?;
+    let mut req = client.get(url);
+    if is_nws_forecast_url(url) {
+        // NWS prefers an identifying User-Agent (set above) and geo+json Accept.
+        req = req.header("Accept", "application/geo+json, application/ld+json, application/json");
+    }
+    let response = req.send()?.error_for_status()?;
     let bytes = response.bytes()?;
+    if is_nws_forecast_url(url) {
+        return parse_nws_forecast_bytes(&bytes, url, channel_id);
+    }
     parse_feed_bytes(&bytes, url, channel_id)
 }
 

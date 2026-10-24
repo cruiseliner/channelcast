@@ -11,7 +11,8 @@ pub fn dedupe_and_rank(mut articles: Vec<Article>) -> Vec<Article> {
         (Some(pa), Some(pb)) => pb.cmp(&pa),
         (Some(_), None) => std::cmp::Ordering::Less,
         (None, Some(_)) => std::cmp::Ordering::Greater,
-        (None, None) => a.title.cmp(&b.title),
+        // Preserve feed / insertion order for undated items (e.g. NWS forecast periods).
+        (None, None) => std::cmp::Ordering::Equal,
     });
     articles
 }
