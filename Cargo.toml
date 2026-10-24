@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/channelcast-core",
     "crates/channelcast-cli",
+    "crates/channelcast-desktop",
 ]
 default-members = ["crates/channelcast-cli", "crates/channelcast-core"]
 

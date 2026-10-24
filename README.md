@@ -1,6 +1,6 @@
 # ChannelCast
 
-On-demand multi-channel news app (PointCast-inspired). **Rust core** first; Windows desktop UI next, then Linux/Mac, then an Android APK via a thin shell around the same core.
+On-demand multi-channel news app (PointCast-inspired). **Rust core** + CLI + a thin **egui desktop** shell; Android APK (phone + TV) later.
 
 **Shipping name:** ChannelCast (not PointCast — that 1990s name was later co-opted).
 
@@ -36,17 +36,17 @@ flowchart LR
     Rank[Dedupe + rank]
     Store[SQLite cache]
   end
-  subgraph ui [Thin UI later]
+  subgraph ui [Thin UI]
     CLI[channelcast CLI]
-    Desk[Desktop app]
-    And[Android APK]
+    Desk[Desktop egui]
+    And[Android APK later]
   end
   RSS --> Fetch
   NWS --> Fetch
   FT --> Fetch
   Cfg --> Fetch --> Kw --> Rank --> Store
   Store --> CLI
-  Store -.-> Desk
+  Store --> Desk
   Store -.-> And
 ```
 
@@ -90,6 +90,18 @@ cargo run -p channelcast-cli -- fetch markets
 ```
 
 Binary name: **`channelcast`**.
+
+## Desktop UI (v0.1)
+
+Minimal egui/eframe window: enabled channels on the left, headlines on the right, **Open in browser** for each article. Uses the same `channelcast-core` fetch path as the CLI (respects `enabled` / personal flags like `channelcast channels`).
+
+```bash
+# from repo root (needs a display; Linux needs libxcb + libxkbcommon -dev packages)
+cargo run -p channelcast-desktop
+```
+
+CI installs those Linux GUI build deps so `cargo test --workspace` stays green. Prebuilt desktop installers are **not** in Releases yet (CLI only for v0.1.0). The desktop crate compiles on Windows/macOS with a normal Rust + GPU/windowing stack; run locally there the same way.
+
 
 Optional flags:
 
