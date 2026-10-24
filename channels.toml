@@ -64,27 +64,26 @@ feeds = [
   "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml",
 ]
 # Case-insensitive match against title + summary. Edit freely.
+# Tight v1: dropped broad israel/jerusalem (and war-flood terms that match most ME headlines).
+# Geographic watch + prophecy lexicon only — edit freely.
 keywords = [
   "turkey",
   "turkish",
+  "ankara",
   "gog",
   "magog",
   "damascus",
-  "syria",
-  "temple",
+  "temple mount",
+  "third temple",
   "red heifer",
   "ezekiel",
   "daniel",
   "revelation",
-  "jerusalem",
-  "israel",
-  "iran",
-  "hezbollah",
-  "hamas",
-  "gaza",
   "prophecy",
+  "prophetic",
   "armageddon",
   "megiddo",
+  "gog and magog",
 ]
 
 [[channels]]
