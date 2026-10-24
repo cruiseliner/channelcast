@@ -1,5 +1,5 @@
 //! ChannelCast desktop — PointCast-inspired on-demand news UI (egui/eframe).
-//! Channel strip + headlines; opens article URLs in the system browser.
+//! Channel strip + headlines + detail blurb; Enter / Open opens the system browser.
 
 use anyhow::{Context, Result};
 use channelcast_core::{headlines_for_channel, Article, Channel, ChannelConfig};
@@ -27,6 +27,85 @@ mod theme {
     pub const STATUS_BG: Color32 = Color32::from_rgb(8, 10, 14);
     pub const ERR: Color32 = Color32::from_rgb(220, 90, 90);
     pub const OK: Color32 = Color32::from_rgb(90, 190, 120);
+}
+
+
+/// Strip crude HTML and collapse whitespace for in-app blurbs.
+fn plain_text(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_tag = false;
+    for ch in s.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => out.push(ch),
+            _ => {}
+        }
+    }
+    let decoded = decode_entities(&out);
+    decoded.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn decode_entities(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let chars: Vec<char> = s.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '&' {
+            if let Some(end) = chars[i + 1..].iter().position(|&c| c == ';') {
+                let ent: String = chars[i + 1..i + 1 + end].iter().collect();
+                let replacement = match ent.as_str() {
+                    "nbsp" => Some(' '),
+                    "amp" => Some('&'),
+                    "lt" => Some('<'),
+                    "gt" => Some('>'),
+                    "quot" => Some('"'),
+                    "apos" => Some('\''),
+                    _ if ent.starts_with('#') => {
+                        let num = if let Some(hex) = ent.strip_prefix("#x").or_else(|| ent.strip_prefix("#X")) {
+                            u32::from_str_radix(hex, 16).ok()
+                        } else if let Some(dec) = ent.strip_prefix('#') {
+                            dec.parse::<u32>().ok()
+                        } else {
+                            None
+                        };
+                        num.and_then(char::from_u32)
+                    }
+                    _ => None,
+                };
+                if let Some(ch) = replacement {
+                    out.push(ch);
+                    i += end + 2; // '&' + ent + ';'
+                    continue;
+                }
+            }
+        }
+        out.push(chars[i]);
+        i += 1;
+    }
+    out
+}
+
+fn blurb_for(article: &Article) -> Option<String> {
+    article
+        .summary
+        .as_deref()
+        .map(plain_text)
+        .filter(|s| !s.is_empty())
+}
+
+/// How much unique text a blurb adds beyond the title (Google News often echoes the title).
+fn blurb_residual_len(title: &str, blurb: &str) -> usize {
+    let t = title.to_lowercase();
+    let b = blurb.to_lowercase();
+    let stripped = b.replace(&t, "");
+    // Also drop a trailing source label like "Israel365 News".
+    stripped
+        .replace("israel365 news", "")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .len()
 }
 
 enum FetchMsg {
@@ -105,7 +184,7 @@ impl App {
         if self.last_fetch_at.is_none() {
             return;
         }
-        if self.settle_frames < 4 {
+        if self.settle_frames < 10 {
             self.settle_frames += 1;
             ctx.request_repaint();
             return;
@@ -242,6 +321,7 @@ impl App {
                     let n = articles.len();
                     self.articles = articles;
                     self.selected_headline = 0;
+                    self.prefer_preview_headline();
                     self.status_is_err = false;
                     self.status = if n == 0 {
                         format!("No headlines for '{channel_id}'")
@@ -356,6 +436,76 @@ impl App {
         self.start_fetch(id);
     }
 
+
+    /// For screenshot previews, prefer a prophecy-ish headline with a real (non-echo) blurb.
+    fn prefer_preview_headline(&mut self) {
+        if self.screenshot_path.is_none() || self.articles.is_empty() {
+            return;
+        }
+        const KEYS: &[&str] = &[
+            "daniel",
+            "prophecy",
+            "temple",
+            "zohar",
+            "heifer",
+            "yeshua",
+            "messiah",
+            "israel365",
+            "aqueduct",
+            "shofar",
+            "ezekiel",
+        ];
+        let mut best: Option<(i32, usize)> = None;
+        for (i, a) in self.articles.iter().enumerate() {
+            let Some(blurb) = blurb_for(a) else {
+                continue;
+            };
+            if blurb.len() < 40 {
+                continue;
+            }
+            let hay = format!("{} {}", a.title, blurb).to_lowercase();
+            if !KEYS.iter().any(|k| hay.contains(k)) {
+                continue;
+            }
+            let residual = blurb_residual_len(&a.title, &blurb);
+            let mut score = residual as i32 + (blurb.len() as i32 / 4);
+            if residual >= 60 {
+                score += 300;
+            }
+            if residual >= 120 {
+                score += 200;
+            }
+            match best {
+                Some((best_score, _)) if best_score >= score => {}
+                _ => best = Some((score, i)),
+            }
+        }
+        if let Some((_, i)) = best {
+            self.selected_headline = i;
+            self.scroll_selected = true;
+            return;
+        }
+        // Fallback: first keyword hit, then first long blurb.
+        if let Some(i) = self.articles.iter().enumerate().find_map(|(i, a)| {
+            let blurb = blurb_for(a)?;
+            let hay = format!("{} {}", a.title, blurb).to_lowercase();
+            KEYS.iter().any(|k| hay.contains(k)).then_some(i)
+        }) {
+            self.selected_headline = i;
+            self.scroll_selected = true;
+            return;
+        }
+        if let Some(i) = self
+            .articles
+            .iter()
+            .enumerate()
+            .find_map(|(i, a)| blurb_for(a).filter(|b| b.len() >= 40).map(|_| i))
+        {
+            self.selected_headline = i;
+            self.scroll_selected = true;
+        }
+    }
+
     fn format_when(published: Option<DateTime<Utc>>) -> String {
         match published {
             Some(t) => t.with_timezone(&Local).format("%a %b %d · %I:%M %p").to_string(),
@@ -428,7 +578,7 @@ impl eframe::App for App {
                             }
                         }
                         ui.label(
-                            RichText::new("j/k · Enter open · [ ] channel · r refresh")
+                            RichText::new("j/k select · Enter open · [ ] channel · r refresh")
                                 .small()
                                 .color(theme::MUTED),
                         );
@@ -563,7 +713,102 @@ impl eframe::App for App {
                 );
             });
 
-        // Headlines
+        // Detail pane (right): title + blurb for the selected headline
+        egui::SidePanel::right("detail")
+            .resizable(true)
+            .default_width(360.0)
+            .width_range(260.0..=520.0)
+            .frame(
+                egui::Frame::NONE
+                    .fill(theme::PANEL)
+                    .inner_margin(egui::Margin::symmetric(14, 12))
+                    .stroke(Stroke::new(1.0_f32, Color32::from_rgb(30, 38, 48))),
+            )
+            .show(ctx, |ui| {
+                ui.label(
+                    RichText::new("STORY")
+                        .small()
+                        .strong()
+                        .color(theme::MUTED),
+                );
+                ui.add_space(8.0);
+
+                if self.fetching {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label(RichText::new("Loading…").color(theme::ACCENT));
+                    });
+                    return;
+                }
+
+                let Some(article) = self.articles.get(self.selected_headline).cloned() else {
+                    ui.label(
+                        RichText::new("Select a headline to read the blurb here.")
+                            .color(theme::MUTED),
+                    );
+                    return;
+                };
+
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.label(
+                            RichText::new(&article.title)
+                                .font(FontId::proportional(18.0))
+                                .strong()
+                                .color(theme::TITLE),
+                        );
+                        ui.add_space(6.0);
+                        ui.label(
+                            RichText::new(format!(
+                                "{} · {}",
+                                article.source,
+                                Self::format_when(article.published)
+                            ))
+                            .small()
+                            .color(theme::MUTED),
+                        );
+                        ui.add_space(10.0);
+                        ui.separator();
+                        ui.add_space(10.0);
+
+                        match blurb_for(&article) {
+                            Some(blurb) => {
+                                ui.label(
+                                    RichText::new(blurb)
+                                        .color(Color32::from_rgb(200, 208, 218)),
+                                );
+                            }
+                            None => {
+                                ui.label(
+                                    RichText::new(
+                                        "No summary available for this item — title only. Open in browser for the full article.",
+                                    )
+                                    .italics()
+                                    .color(theme::MUTED),
+                                );
+                            }
+                        }
+
+                        ui.add_space(16.0);
+                        let open_btn = egui::Button::new(
+                            RichText::new("Open in browser").color(theme::TITLE),
+                        )
+                        .fill(theme::STRIP)
+                        .stroke(Stroke::new(1.0_f32, theme::SELECTED_BORDER));
+                        if ui.add(open_btn).clicked() {
+                            self.open_selected();
+                        }
+                        ui.add_space(6.0);
+                        ui.label(
+                            RichText::new(&article.url)
+                                .small()
+                                .color(Color32::from_rgb(100, 110, 125)),
+                        );
+                    });
+            });
+
+        // Headlines (center)
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::NONE
@@ -610,6 +855,7 @@ impl eframe::App for App {
                     return;
                 }
 
+                let mut select_idx: Option<usize> = None;
                 let mut open_idx: Option<usize> = None;
                 let selected_idx = self.selected_headline;
 
@@ -629,21 +875,12 @@ impl eframe::App for App {
                                 Stroke::new(1.0_f32, Color32::from_rgb(28, 34, 44))
                             };
 
-                            egui::Frame::NONE
+                            let row = egui::Frame::NONE
                                 .fill(fill)
                                 .stroke(stroke)
                                 .corner_radius(4.0)
                                 .inner_margin(egui::Margin::symmetric(10, 8))
                                 .show(ui, |ui| {
-                                    let response = ui.interact(
-                                        ui.max_rect(),
-                                        ui.id().with(("hl", i)),
-                                        Sense::click(),
-                                    );
-                                    if response.clicked() {
-                                        open_idx = Some(i);
-                                    }
-
                                     ui.horizontal(|ui| {
                                         ui.label(
                                             RichText::new(format!("{:02}", i + 1))
@@ -669,30 +906,36 @@ impl eframe::App for App {
                                         .small()
                                         .color(theme::MUTED),
                                     );
-                                    if let Some(sum) = a.summary.as_deref() {
-                                        let brief: String = sum.chars().take(160).collect();
-                                        if !brief.trim().is_empty() {
-                                            ui.label(
-                                                RichText::new(brief)
-                                                    .small()
-                                                    .color(Color32::from_rgb(180, 188, 200)),
-                                            );
-                                        }
-                                    }
                                 });
-                            ui.add_space(6.0);
-
-                            if is_sel && self.scroll_selected {
-                                ui.scroll_to_cursor(Some(egui::Align::Center));
+                            let response = ui.interact(
+                                row.response.rect,
+                                ui.id().with(("hl", i)),
+                                Sense::click(),
+                            );
+                            if response.double_clicked() {
+                                open_idx = Some(i);
+                            } else if response.clicked() {
+                                select_idx = Some(i);
                             }
+                            if is_sel && self.scroll_selected {
+                                response.scroll_to_me(Some(egui::Align::Center));
+                            }
+                            ui.add_space(6.0);
                         }
                     });
 
+                if let Some(i) = select_idx {
+                    self.selected_headline = i;
+                    self.scroll_selected = true;
+                }
                 if let Some(i) = open_idx {
                     self.selected_headline = i;
                     self.open_selected();
                 }
-                self.scroll_selected = false;
+                // Keep scrolling into view across settle frames while screenshotting.
+                if self.screenshot_path.is_none() || self.screenshot_requested {
+                    self.scroll_selected = false;
+                }
             });
     }
 }
@@ -765,8 +1008,8 @@ fn main() -> eframe::Result<()> {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1024.0, 680.0])
-            .with_min_inner_size([720.0, 480.0])
+            .with_inner_size([1180.0, 720.0])
+            .with_min_inner_size([900.0, 520.0])
             .with_title("ChannelCast"),
         ..Default::default()
     };

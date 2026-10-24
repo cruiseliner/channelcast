@@ -111,7 +111,7 @@ Binary name: **`channelcast`**.
 
 ## Desktop UI (v0.1)
 
-PointCast-inspired egui shell: dark channel strip on the left (● marks personal), headlines with **source · time** on the right, status bar for fetch state. Keyboard: **j/k** or arrows move headlines, **Enter** opens, **[ ]** switch channel, **r** refresh. Click a headline to open in the browser. Same `channelcast-core` path as the CLI (`enabled` channels only — entertainment, weather, local, Space Coast included when enabled).
+PointCast-inspired egui shell: dark channel strip on the left (● marks personal), headline list in the center (**source · time**), and a **detail pane** on the right with title + summary/blurb (or a title-only note when no summary). Status bar for fetch state. Keyboard: **j/k** or arrows select headlines, **Enter** / **Open in browser** opens the article, **[ ]** switch channel, **r** refresh. Click selects; double-click opens. Same `channelcast-core` path as the CLI (`enabled` channels only — entertainment, weather, local, Space Coast included when enabled).
 
 ```bash
 # from repo root (needs a display; Linux needs libxcb + libxkbcommon -dev packages)
@@ -121,6 +121,8 @@ cargo run -p channelcast-desktop -- --channel watchman --screenshot docs/desktop
 ```
 
 CI installs those Linux GUI build deps so `cargo test --workspace` stays green. Prebuilt desktop binaries ship on [Releases](https://github.com/cruiseliner/channelcast/releases) from **v0.1.1** onward (same platforms as the CLI). Preview: [`docs/desktop-preview.png`](docs/desktop-preview.png) (Watchman / prophecy channel).
+
+**Desktop (main):** Detail / blurb pane for the selected headline (title, source, time, summary when present).
 
 **v0.1.3:** Polished desktop app — dark PointCast-style channel strip with personal ● marks, source · time on headlines, keyboard nav (j/k / arrows, Enter to open, [ ] to switch channels, r to refresh), and a status line.
 
