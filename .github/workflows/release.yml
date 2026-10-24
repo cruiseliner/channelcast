@@ -44,7 +44,9 @@ jobs:
             target: x86_64-pc-windows-msvc
             asset_stem: channelcast-cli-windows-x64
             archive: zip
-          - os: macos-13
+          # Both Mac targets on macos-latest (arm64 host). x86_64 is a
+          # first-class Apple target — no macos-13 queue dependency.
+          - os: macos-latest
             target: x86_64-apple-darwin
             asset_stem: channelcast-cli-macos-x64
             archive: tar.gz
