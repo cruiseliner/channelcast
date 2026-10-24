@@ -1,5 +1,12 @@
 # ChannelCast
 
+## What's new in v0.1.5
+
+- Desktop **story pane**: in-app headline blurbs without opening the browser
+- **Watchman** (End Times / Israel) on by default
+- Desktop `--channel <id>` and `--screenshot <path>` flags
+
+
 On-demand multi-channel news app (PointCast-inspired). **Rust core** + CLI + **egui desktop** + **Android scaffold** (phone + TV flavors; APKs not on Releases yet).
 
 **Shipping name:** ChannelCast (not PointCast — that 1990s name was later co-opted).
