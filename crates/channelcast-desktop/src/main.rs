@@ -55,12 +55,24 @@ struct App {
     last_fetch_at: Option<DateTime<Utc>>,
     cache_path: PathBuf,
     rx: Option<Receiver<FetchMsg>>,
+    /// When set, capture a PNG after headlines paint, then quit.
+    screenshot_path: Option<PathBuf>,
+    screenshot_requested: bool,
+    settle_frames: u8,
+    quit_after_screenshot: bool,
 }
 
 impl App {
-    fn new(config: ChannelConfig, cache_path: PathBuf) -> Self {
+    fn new(
+        config: ChannelConfig,
+        cache_path: PathBuf,
+        initial_channel: Option<String>,
+        screenshot_path: Option<PathBuf>,
+    ) -> Self {
         let channels: Vec<Channel> = config.listed(false).into_iter().cloned().collect();
-        let selected = channels.first().map(|c| c.id.clone());
+        let selected = initial_channel
+            .filter(|id| channels.iter().any(|c| &c.id == id))
+            .or_else(|| channels.first().map(|c| c.id.clone()));
         let mut app = Self {
             config,
             channels,
@@ -74,11 +86,75 @@ impl App {
             last_fetch_at: None,
             cache_path,
             rx: None,
+            screenshot_path,
+            screenshot_requested: false,
+            settle_frames: 0,
+            quit_after_screenshot: false,
         };
         if let Some(id) = app.selected.clone() {
             app.start_fetch(id);
         }
         app
+    }
+
+    fn maybe_request_screenshot(&mut self, ctx: &egui::Context) {
+        if self.screenshot_path.is_none() || self.screenshot_requested || self.fetching {
+            return;
+        }
+        // Wait until we have headlines (or a settled empty/error state) and a few paint frames.
+        if self.last_fetch_at.is_none() {
+            return;
+        }
+        if self.settle_frames < 4 {
+            self.settle_frames += 1;
+            ctx.request_repaint();
+            return;
+        }
+        self.screenshot_requested = true;
+        ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+        ctx.request_repaint();
+    }
+
+    fn handle_screenshot_events(&mut self, ctx: &egui::Context) {
+        let Some(path) = self.screenshot_path.clone() else {
+            return;
+        };
+        let image = ctx.input(|i| {
+            i.events.iter().find_map(|e| {
+                if let egui::Event::Screenshot { image, .. } = e {
+                    Some(image.clone())
+                } else {
+                    None
+                }
+            })
+        });
+        let Some(image) = image else {
+            return;
+        };
+        let [w, h] = image.size;
+        let raw = image.as_raw();
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        match image::save_buffer(&path, raw, w as u32, h as u32, image::ColorType::Rgba8) {
+            Ok(()) => {
+                eprintln!(
+                    "channelcast-desktop: wrote screenshot {} ({}x{})",
+                    path.display(),
+                    w,
+                    h
+                );
+                self.status = format!("Screenshot saved: {}", path.display());
+                self.status_is_err = false;
+            }
+            Err(e) => {
+                eprintln!("channelcast-desktop: screenshot save failed: {e:#}");
+                self.status = format!("Screenshot failed: {e}");
+                self.status_is_err = true;
+            }
+        }
+        self.quit_after_screenshot = true;
+        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
     }
 
     fn apply_visuals(ctx: &egui::Context) {
@@ -310,6 +386,11 @@ impl eframe::App for App {
         Self::apply_visuals(ctx);
         self.poll_fetch(ctx);
         self.handle_keys(ctx);
+        self.maybe_request_screenshot(ctx);
+        self.handle_screenshot_events(ctx);
+        if self.quit_after_screenshot {
+            return;
+        }
 
         // Top ticker bar
         egui::TopBottomPanel::top("top")
@@ -628,7 +709,40 @@ fn load_config(path: Option<&Path>) -> Result<ChannelConfig> {
     ChannelConfig::defaults().context("loading built-in defaults")
 }
 
+#[derive(Debug, Default)]
+struct CliArgs {
+    channel: Option<String>,
+    screenshot: Option<PathBuf>,
+}
+
+fn parse_args() -> CliArgs {
+    let mut args = CliArgs::default();
+    let mut it = std::env::args().skip(1);
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--channel" => {
+                args.channel = it.next();
+            }
+            "--screenshot" => {
+                args.screenshot = it.next().map(PathBuf::from);
+            }
+            "-h" | "--help" => {
+                eprintln!(
+                    "Usage: channelcast-desktop [--channel ID] [--screenshot PATH]\n\n                     --channel ID       Select and fetch this channel on startup\n                     --screenshot PATH  After headlines paint, write PNG and quit"
+                );
+                std::process::exit(0);
+            }
+            other => {
+                eprintln!("channelcast-desktop: unknown argument '{other}' (try --help)");
+                std::process::exit(2);
+            }
+        }
+    }
+    args
+}
+
 fn main() -> eframe::Result<()> {
+    let cli = parse_args();
     let config = match load_config(None) {
         Ok(c) => c,
         Err(e) => {
@@ -636,6 +750,13 @@ fn main() -> eframe::Result<()> {
             std::process::exit(1);
         }
     };
+
+    if let Some(id) = &cli.channel {
+        if config.get(id).is_err() {
+            eprintln!("channelcast-desktop: unknown channel '{id}'");
+            std::process::exit(1);
+        }
+    }
 
     let cache_path = PathBuf::from(".channelcast/cache.db");
     if let Some(parent) = cache_path.parent() {
@@ -650,12 +771,14 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
 
+    let initial = cli.channel.clone();
+    let shot = cli.screenshot.clone();
     eframe::run_native(
         "ChannelCast",
         options,
         Box::new(move |cc| {
             App::apply_visuals(&cc.egui_ctx);
-            Ok(Box::new(App::new(config, cache_path)))
+            Ok(Box::new(App::new(config, cache_path, initial, shot)))
         }),
     )
 }

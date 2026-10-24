@@ -19,3 +19,4 @@ chrono.workspace = true
 eframe = { version = "0.31", default-features = true }
 egui = "0.31"
 open = "5"
+image = { version = "0.25", default-features = false, features = ["png"] }

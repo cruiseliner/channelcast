@@ -725,6 +725,7 @@ dependencies = [
  "chrono",
  "eframe",
  "egui",
+ "image",
  "open",
 ]
 
