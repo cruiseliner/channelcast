@@ -1,6 +1,7 @@
 package com.cruiseliner.channelcast
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -22,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -60,7 +63,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ChannelCastScreen(
                         initialChannelId = initial,
-                        onOpenUrl = { url -> openArticle(url) },
+                        onOpenUrl = { url, title -> openArticle(url, title) },
                     )
                 }
             }
@@ -82,23 +85,47 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun openArticle(url: String) {
+    private fun isTelevision(): Boolean {
+        val uiMode = resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
+        return uiMode == Configuration.UI_MODE_TYPE_TELEVISION
+    }
+
+    private fun openInWebView(url: String, title: String?) {
+        startActivity(
+            Intent(this, ArticleActivity::class.java).apply {
+                putExtra(ArticleActivity.EXTRA_URL, url)
+                if (!title.isNullOrBlank()) {
+                    putExtra(ArticleActivity.EXTRA_TITLE, title)
+                }
+            },
+        )
+    }
+
+    /**
+     * TV: always use in-app WebView (no browser / Custom Tabs on most TCL sets).
+     * Phone: Custom Tabs → ACTION_VIEW → WebView fallback.
+     */
+    private fun openArticle(url: String, title: String? = null) {
         if (url.isBlank()) {
             Toast.makeText(this, "No URL for this item", Toast.LENGTH_SHORT).show()
             return
         }
         val uri = Uri.parse(url)
+        if (isTelevision()) {
+            openInWebView(url, title)
+            return
+        }
         try {
             CustomTabsIntent.Builder().build().launchUrl(this, uri)
             return
         } catch (_: Exception) {
-            // Fall through — TV often has no Custom Tabs provider.
+            // Fall through — no Custom Tabs provider.
         }
         try {
             startActivity(Intent(Intent.ACTION_VIEW, uri))
         } catch (e: Exception) {
-            Log.w(TAG, "No browser for $url", e)
-            Toast.makeText(this, url, Toast.LENGTH_LONG).show()
+            Log.w(TAG, "No browser for $url — WebView", e)
+            openInWebView(url, title)
         }
     }
 
@@ -110,12 +137,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ChannelCastScreen(
     initialChannelId: String?,
-    onOpenUrl: (String) -> Unit,
+    onOpenUrl: (String, String?) -> Unit,
 ) {
     var channels by remember { mutableStateOf<List<FfiChannel>>(emptyList()) }
     var channelsError by remember { mutableStateOf<String?>(null) }
     var selectedId by remember { mutableStateOf(initialChannelId) }
     var headlines by remember { mutableStateOf<List<FfiHeadline>>(emptyList()) }
+    var selectedHeadline by remember { mutableStateOf<FfiHeadline?>(null) }
     var loading by remember { mutableStateOf(false) }
     var headlinesError by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf("Loading channels…") }
@@ -129,7 +157,7 @@ fun ChannelCastScreen(
             channels = listed
             status = "${listed.size} channels"
             if (selectedId == null) {
-                selectedId = listed.firstOrNull { it.id == "watchman" }?.id
+                selectedId = listed.firstOrNull { it.id == "top" }?.id
                     ?: listed.firstOrNull()?.id
             }
             Log.i("ChannelCast", "listChannels -> ${listed.size}")
@@ -149,6 +177,7 @@ fun ChannelCastScreen(
         loading = true
         headlinesError = null
         headlines = emptyList()
+        selectedHeadline = null
         status = "Fetching $id…"
         try {
             val items = withContext(Dispatchers.IO) {
@@ -267,13 +296,22 @@ fun ChannelCastScreen(
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     contentPadding = PaddingValues(bottom = 24.dp),
+                    modifier = Modifier.weight(1f, fill = false),
                 ) {
                     items(headlines, key = { it.url + it.title }) { h ->
+                        val selected = selectedHeadline?.url == h.url && selectedHeadline?.title == h.title
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onOpenUrl(h.url) }
-                                .padding(vertical = 8.dp),
+                                .background(if (selected) Color(0xFF1E2633) else Color.Transparent)
+                                .clickable {
+                                    if (selected) {
+                                        onOpenUrl(h.url, h.title)
+                                    } else {
+                                        selectedHeadline = h
+                                    }
+                                }
+                                .padding(vertical = 8.dp, horizontal = 4.dp),
                         ) {
                             Text(h.title, style = MaterialTheme.typography.titleMedium)
                             val meta = buildString {
@@ -299,6 +337,44 @@ fun ChannelCastScreen(
                         HorizontalDivider()
                     }
                 }
+            }
+        }
+
+        val detail = selectedHeadline
+        if (detail != null) {
+            Column(
+                modifier = Modifier
+                    .widthIn(min = 280.dp, max = 420.dp)
+                    .fillMaxHeight()
+                    .background(Color(0xFF161A22))
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("STORY", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text(detail.title, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    text = buildString {
+                        append(detail.source)
+                        detail.published?.let { append(" · "); append(it.take(16).replace('T', ' ')) }
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                HorizontalDivider()
+                Text(
+                    text = detail.summary?.takeIf { it.isNotBlank() }
+                        ?: "No summary in feed — open the article for full text.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    text = "Open article",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clickable { onOpenUrl(detail.url, detail.title) }
+                        .padding(vertical = 12.dp),
+                )
             }
         }
     }

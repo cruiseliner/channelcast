@@ -1,5 +1,13 @@
 # ChannelCast
 
+## What's new in v0.1.8 (Android)
+
+- **In-app WebView reader** on Android TV (no browser toast for Tech / USA Today links)
+- Story detail pane: select a headline for full summary; **Open article** / second click loads WebView
+- **Sports** channel removed
+- Default channel on open is **top** (not Watchman)
+- Release: [v0.1.8-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.8-android)
+
 ## What's new in v0.1.7 (Android)
 
 - **UniFFI bridge**: TV + phone APKs load **real headlines** from `channelcast-core` (Watchman, Space Coast, Top, …)
@@ -20,7 +28,7 @@ On-demand multi-channel news app (PointCast-inspired). **Rust core** + CLI + **e
 ## What it is
 
 - An app **you open when you want news**
-- Topic **channels** (Top, Tech, Markets, Sports, …) backed by free public RSS/Atom feeds
+- Topic **channels** (Top, Tech, Markets, Entertainment, …) backed by free public RSS/Atom feeds
 - A shared **`channelcast-core`** library: config → fetch → optional keyword filter → dedupe by URL → rank by recency → optional SQLite cache
 - A CLI (`channelcast`) so the core is usable before any GUI ships
 
@@ -167,7 +175,6 @@ Optional flags:
 | `tech` | on | Hacker News (hnrss), Ars Technica + personal USA Today tech HTML/sitemap (cookie optional) |
 | `entertainment` | on, personal | USA Today entertainment HTML/sitemap (cookie optional) |
 | `markets` | on | BBC Business, CNBC Top News |
-| `sports` | on | BBC Sport, ESPN Top |
 | `prowrestling` | on, personal | Fightful, F4W Online |
 | `watchman` | **enabled by default** (End Times / Israel), personal | Jerusalem Post frontpage, Times of Israel, BBC Middle East + keyword filter |
 | `weather` | on, personal | ZIP **32920** Cape Canaveral FL — NWS MLB grid 56,65 forecast JSON + alerts Atom zone FLZ747 |

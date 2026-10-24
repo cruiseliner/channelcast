@@ -33,5 +33,11 @@
                     android:pathPrefix="/" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ArticleActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
     </application>
 </manifest>

@@ -2,7 +2,7 @@
 
 **Phone APK** (Samsung S25 Ultra) and **Android TV leanback APK** that a custom TV launcher can open (same idea as Guide → TiviMate).
 
-**Status (v0.1.7):** UniFFI bridge to `channelcast-core` is live. Selecting a channel fetches **real headlines** (Watchman, Space Coast, Top, Tech, …). Tap opens Custom Tabs / browser; on TV without a browser the URL is Toast’d.
+**Status (v0.1.8):** UniFFI bridge live. Default channel is **top**. Articles open in-app **WebView** on TV (Custom Tabs / browser on phone). Sports channel removed. Story detail pane + Open article.
 
 ## Layout
 
