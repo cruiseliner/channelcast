@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to create/publish (e.g. v0.1.0). Leave empty to build artifacts only without a GitHub Release."
+        description: "Tag to create/publish (e.g. v0.1.1). Leave empty to build artifacts only without a GitHub Release."
         required: false
         default: ""
 
@@ -16,7 +16,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  BIN_NAME: channelcast
 
 jobs:
   test:
@@ -40,24 +39,64 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # --- CLI ---
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            package: channelcast-cli
+            bin: channelcast
             asset_stem: channelcast-cli-linux-x64
             archive: tar.gz
+            needs_gui_deps: true
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            package: channelcast-cli
+            bin: channelcast
             asset_stem: channelcast-cli-windows-x64
             archive: zip
-          # Both Mac targets on macos-latest (arm64 host). x86_64 is a
-          # first-class Apple target — no macos-13 queue dependency.
+            needs_gui_deps: false
           - os: macos-latest
             target: x86_64-apple-darwin
+            package: channelcast-cli
+            bin: channelcast
             asset_stem: channelcast-cli-macos-x64
             archive: tar.gz
+            needs_gui_deps: false
           - os: macos-latest
             target: aarch64-apple-darwin
+            package: channelcast-cli
+            bin: channelcast
             asset_stem: channelcast-cli-macos-arm64
             archive: tar.gz
+            needs_gui_deps: false
+          # --- Desktop (egui/eframe) ---
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            package: channelcast-desktop
+            bin: channelcast-desktop
+            asset_stem: channelcast-desktop-linux-x64
+            archive: tar.gz
+            needs_gui_deps: true
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            package: channelcast-desktop
+            bin: channelcast-desktop
+            asset_stem: channelcast-desktop-windows-x64
+            archive: zip
+            needs_gui_deps: false
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            package: channelcast-desktop
+            bin: channelcast-desktop
+            asset_stem: channelcast-desktop-macos-x64
+            archive: tar.gz
+            needs_gui_deps: false
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            package: channelcast-desktop
+            bin: channelcast-desktop
+            asset_stem: channelcast-desktop-macos-arm64
+            archive: tar.gz
+            needs_gui_deps: false
 
     steps:
       - uses: actions/checkout@v4
@@ -66,18 +105,24 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Install Linux GUI build deps (egui/winit)
+        if: matrix.needs_gui_deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev pkg-config
+
       - name: Build release binary
-        run: cargo build -p channelcast-cli --release --target ${{ matrix.target }}
+        run: cargo build -p ${{ matrix.package }} --release --target ${{ matrix.target }}
 
       - name: Package (Unix)
         if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euo pipefail
-          OUT="target/${{ matrix.target }}/release/${BIN_NAME}"
+          OUT="target/${{ matrix.target }}/release/${{ matrix.bin }}"
           STAGE="${{ matrix.asset_stem }}"
           mkdir -p "$STAGE"
-          cp "$OUT" "$STAGE/${BIN_NAME}"
+          cp "$OUT" "$STAGE/${{ matrix.bin }}"
           cp README.md LICENSE channels.toml "$STAGE/"
           tar -czf "${STAGE}.tar.gz" "$STAGE"
           echo "ASSET=${STAGE}.tar.gz" >> "$GITHUB_ENV"
@@ -87,10 +132,10 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $out = "target/${{ matrix.target }}/release/$env:BIN_NAME.exe"
+          $out = "target/${{ matrix.target }}/release/${{ matrix.bin }}.exe"
           $stage = "${{ matrix.asset_stem }}"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
-          Copy-Item $out "$stage/$env:BIN_NAME.exe"
+          Copy-Item $out "$stage/${{ matrix.bin }}.exe"
           Copy-Item README.md, LICENSE, channels.toml $stage
           Compress-Archive -Path $stage -DestinationPath "$stage.zip" -Force
           "ASSET=$stage.zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -152,9 +197,26 @@ jobs:
 
             Unpack and run the `channelcast` binary (`channelcast.exe` on Windows).
 
-            **Android APK:** not available yet (planned; UniFFI/JNI shell around `channelcast-core`).
+            ## Desktop GUI downloads
 
-            Build from source: `cargo install --path crates/channelcast-cli`
+            egui/eframe shell — channel list + headlines, opens articles in your browser.
+
+            | Platform | Asset |
+            |----------|-------|
+            | Windows x64 | `channelcast-desktop-windows-x64.zip` |
+            | Linux x64 | `channelcast-desktop-linux-x64.tar.gz` |
+            | macOS Intel x64 | `channelcast-desktop-macos-x64.tar.gz` |
+            | macOS Apple Silicon | `channelcast-desktop-macos-arm64.tar.gz` |
+
+            Unpack and run `channelcast-desktop` (`channelcast-desktop.exe` on Windows). Linux needs a display and typical X11/Wayland libraries (`libxcb`, `libxkbcommon`).
+
+            **Android APK:** not available yet (planned; UniFFI/JNI shell around `channelcast-core`). Android TV leanback later.
+
+            Build from source:
+            ```
+            cargo install --path crates/channelcast-cli
+            cargo run -p channelcast-desktop
+            ```
           files: |
             release-assets/*
         env:

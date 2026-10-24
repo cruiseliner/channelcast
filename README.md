@@ -52,7 +52,9 @@ flowchart LR
 
 ## Downloads
 
-Prebuilt **CLI** binaries (Windows / Linux / macOS) are published on the [Releases](https://github.com/cruiseliner/channelcast/releases) page when a `v*` tag is pushed:
+Prebuilt **CLI** and **desktop GUI** binaries (Windows / Linux / macOS) are published on the [Releases](https://github.com/cruiseliner/channelcast/releases) page when a `v*` tag is pushed.
+
+### CLI
 
 | Platform | Asset |
 |----------|-------|
@@ -63,12 +65,26 @@ Prebuilt **CLI** binaries (Windows / Linux / macOS) are published on the [Releas
 
 Unpack and run `channelcast` (`channelcast.exe` on Windows). Each archive also includes `README.md`, `LICENSE`, and a starter `channels.toml`.
 
-**Android APK:** not available yet — planned later as a thin shell around `channelcast-core` (UniFFI/JNI). There is no APK download today; do not expect one in Releases until that ships.
+### Desktop GUI
+
+egui/eframe shell — channel list + headlines; opens articles in your browser.
+
+| Platform | Asset |
+|----------|-------|
+| Windows x64 | `channelcast-desktop-windows-x64.zip` |
+| Linux x64 | `channelcast-desktop-linux-x64.tar.gz` |
+| macOS Intel x64 | `channelcast-desktop-macos-x64.tar.gz` |
+| macOS Apple Silicon (arm64) | `channelcast-desktop-macos-arm64.tar.gz` |
+
+Unpack and run `channelcast-desktop` (`channelcast-desktop.exe` on Windows). Linux needs a display and typical X11/Wayland libs (`libxcb`, `libxkbcommon`).
+
+**Android APK:** not available yet — planned later as a thin shell around `channelcast-core` (UniFFI/JNI), with a separate Android TV leanback build. There is no APK download today.
 
 **Build from source** (any platform with a Rust toolchain):
 
 ```bash
 cargo install --path crates/channelcast-cli
+cargo run -p channelcast-desktop   # needs a display; Linux: libxcb + libxkbcommon -dev
 # or from a clone:
 cargo run -p channelcast-cli -- --help
 ```
@@ -100,7 +116,7 @@ Minimal egui/eframe window: enabled channels on the left, headlines on the right
 cargo run -p channelcast-desktop
 ```
 
-CI installs those Linux GUI build deps so `cargo test --workspace` stays green. Prebuilt desktop installers are **not** in Releases yet (CLI only for v0.1.0). The desktop crate compiles on Windows/macOS with a normal Rust + GPU/windowing stack; run locally there the same way.
+CI installs those Linux GUI build deps so `cargo test --workspace` stays green. Prebuilt desktop binaries ship on [Releases](https://github.com/cruiseliner/channelcast/releases) from **v0.1.1** onward (same platforms as the CLI).
 
 
 Optional flags:
