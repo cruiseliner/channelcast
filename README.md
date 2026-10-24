@@ -28,6 +28,7 @@ flowchart LR
     RSS[RSS / Atom]
     NWS[NWS forecast JSON + alerts Atom]
     FT[Florida Today HTML / sitemap personal]
+    USA[USA Today HTML / sitemap personal]
   end
   subgraph core [channelcast-core]
     Cfg[channels.toml]
@@ -44,6 +45,7 @@ flowchart LR
   RSS --> Fetch
   NWS --> Fetch
   FT --> Fetch
+  USA --> Fetch
   Cfg --> Fetch --> Kw --> Rank --> Store
   Store --> CLI
   Store --> Desk
@@ -129,8 +131,9 @@ Optional flags:
 
 | id | status | feeds (HTTP 200 verified 2026-10-24) |
 |----|--------|--------------------------------------|
-| `top` | on | BBC World, NPR News |
-| `tech` | on | Hacker News (hnrss), Ars Technica |
+| `top` | on | BBC World, NPR News + personal USA Today nation/politics HTML/sitemap (cookie optional) |
+| `tech` | on | Hacker News (hnrss), Ars Technica + personal USA Today tech HTML/sitemap (cookie optional) |
+| `entertainment` | on, personal | USA Today entertainment HTML/sitemap (cookie optional) |
 | `markets` | on | BBC Business, CNBC Top News |
 | `sports` | on | BBC Sport, ESPN Top |
 | `prowrestling` | on, personal | Fightful, F4W Online |
@@ -169,6 +172,7 @@ Optional flags:
 | Blue Origin / SpaceX official RSS | no usable public feed (429/HTML) |
 | NASA commercialcrew blog `/feed/` | 200 but HTML, not RSS |
 | Florida Today space RSS paths | 404 — **workaround:** personal HTML `/space/` + `news-sitemap.xml` space filter (cookie optional for full body) |
+| USA Today nation/tech/entertainment RSS | no usable public RSS — **workaround:** personal HTML section listings + `news-sitemap.xml` path filters (cookie optional for full body) |
 
 **Needs RSS or licensed API (not scraped in v0.1):** israel365news, other “watchman-style” prophecy portals without a public feed. Add URLs to `channels.toml` when they expose RSS.
 
@@ -203,6 +207,34 @@ Precedence: `CHANNELCAST_FLORIDATODAY_COOKIE` → `CHANNELCAST_FLORIDATODAY_COOK
 If no cookie is found, ChannelCast logs a short note and still returns listing/sitemap titles (other feeds on the channel keep working).
 
 **Never commit** `*.cookies`, `.channelcast/`, or `.env` files. The public CLI does not automate password login.
+
+## Personal USA Today (subscriber)
+
+USA Today does not expose a usable public RSS feed for nation / tech / entertainment. ChannelCast folds **personal** Gannett HTML/sitemap sources into:
+
+- `top` — `https://www.usatoday.com/news/nation/` + `news-sitemap.xml#nation` (nation + politics paths)
+- `tech` — `https://www.usatoday.com/tech/` + `news-sitemap.xml#tech`
+- `entertainment` — `https://www.usatoday.com/entertainment/` + `news-sitemap.xml#entertainment`
+
+**Split:** USA Today = US national / tech / entertainment; Florida Today stays Space Coast / local (`local`, `spacecoast`).
+
+Same polite UA as Florida Today (`ChannelCast/0.1 (+…; personal subscriber use)`). Titles work **without** a cookie; optional Cookie unlocks fuller article body text.
+
+### Cookie setup (optional)
+
+1. Sign in at [account.usatoday.com](https://account.usatoday.com/) (or the site login flow) in your browser.
+2. Export cookies for `usatoday.com` (Netscape `cookies.txt` or DevTools `Cookie` header).
+3. Save to a **gitignored** path, e.g. `.channelcast/usatoday.cookies`, **or** set:
+
+```bash
+export CHANNELCAST_USATODAY_COOKIE='name=value; other=value'
+# or
+export CHANNELCAST_USATODAY_COOKIE_FILE="$HOME/.channelcast/usatoday.cookies"
+```
+
+Precedence: `CHANNELCAST_USATODAY_COOKIE` → `CHANNELCAST_USATODAY_COOKIE_FILE` → `.channelcast/usatoday.cookies` → `~/.channelcast/usatoday.cookies`.
+
+**Never commit** cookies or passwords. Auth is not required for listing/sitemap headlines.
 
 ## Development
 

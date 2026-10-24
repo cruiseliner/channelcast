@@ -21,6 +21,7 @@ tmp/
 # Secrets / sessions — never commit
 *.cookies
 floridatoday.cookies
+usatoday.cookies
 .env
 .env.*
 

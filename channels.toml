@@ -4,23 +4,31 @@
 #
 # Personal / optional channels: set enabled = false to hide from default
 # CLI listing unless --all. Public repo does not endorse any outlet's views.
+# Gannett HTML/sitemap (Florida Today, USA Today): polite UA, cookie optional, never commit secrets.
 
 [[channels]]
 id = "top"
 name = "Top"
-description = "World / general headlines"
+description = "World / US national headlines. Free RSS + personal USA Today nation/politics HTML/sitemap (cookie optional)."
 feeds = [
   "https://feeds.bbci.co.uk/news/world/rss.xml",
   "https://feeds.npr.org/1001/rss.xml",
+  # Personal USA Today (Gannett): section listing + news-sitemap nation/politics filter. Not RSS.
+  # Cookie optional (CHANNELCAST_USATODAY_COOKIE or .channelcast/usatoday.cookies).
+  "https://www.usatoday.com/news/nation/",
+  "https://www.usatoday.com/news-sitemap.xml#nation",
 ]
 
 [[channels]]
 id = "tech"
 name = "Tech"
-description = "Technology and software"
+description = "Technology and software. Free RSS + personal USA Today tech HTML/sitemap (cookie optional)."
 feeds = [
   "https://hnrss.org/frontpage",
   "https://feeds.arstechnica.com/arstechnica/index",
+  # Personal USA Today tech desk (Gannett HTML/sitemap — no public RSS).
+  "https://www.usatoday.com/tech/",
+  "https://www.usatoday.com/news-sitemap.xml#tech",
 ]
 
 [[channels]]
@@ -40,6 +48,19 @@ feeds = [
   "https://feeds.bbci.co.uk/sport/rss.xml",
   "https://www.espn.com/espn/rss/news",
 ]
+
+
+[[channels]]
+id = "entertainment"
+name = "Entertainment"
+description = "Entertainment headlines. Personal USA Today entertainment HTML/sitemap (cookie optional) — no public RSS."
+enabled = true
+personal = true
+feeds = [
+  "https://www.usatoday.com/entertainment/",
+  "https://www.usatoday.com/news-sitemap.xml#entertainment",
+]
+# USA Today = national / tech / entertainment; Florida Today stays Space Coast / local.
 
 [[channels]]
 id = "prowrestling"

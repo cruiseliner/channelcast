@@ -1,6 +1,8 @@
 use channelcast_core::{
     dedupe_and_rank, parse_article_body_bytes, parse_feed_bytes, parse_listing_bytes,
-    parse_nws_forecast_bytes, parse_sitemap_bytes, Cache, ChannelConfig,
+    parse_nws_forecast_bytes, parse_sitemap_bytes, parse_usatoday_article_body_bytes,
+    parse_usatoday_listing_bytes, parse_usatoday_sitemap_bytes, Cache, ChannelConfig,
+    UsaTodaySitemapFilter,
 };
 
 #[test]
@@ -130,4 +132,83 @@ fn defaults_include_floridatoday_on_spacecoast_and_local() {
         .feeds
         .iter()
         .any(|u| u.contains("floridatoday.com/space")));
+}
+
+
+#[test]
+fn parses_usatoday_nation_listing() {
+    let bytes = include_bytes!("fixtures/usatoday_nation.html");
+    let articles = parse_usatoday_listing_bytes(bytes, "top").unwrap();
+    assert!(articles.len() >= 3, "got {}", articles.len());
+    assert!(articles[0].url.starts_with("https://www.usatoday.com/"));
+    assert_eq!(articles[0].source, "USA Today");
+}
+
+#[test]
+fn parses_usatoday_tech_listing() {
+    let bytes = include_bytes!("fixtures/usatoday_tech.html");
+    let articles = parse_usatoday_listing_bytes(bytes, "tech").unwrap();
+    assert!(articles.len() >= 2, "got {}", articles.len());
+    assert_eq!(articles[0].source, "USA Today");
+}
+
+#[test]
+fn parses_usatoday_sitemap_filters() {
+    let bytes = include_bytes!("fixtures/usatoday_sitemap_mixed.xml");
+    let nation = parse_usatoday_sitemap_bytes(bytes, "top", UsaTodaySitemapFilter::Nation).unwrap();
+    assert!(!nation.is_empty());
+    assert!(nation.iter().all(|a| {
+        let u = a.url.to_ascii_lowercase();
+        u.contains("/story/news/nation/") || u.contains("/story/news/politics/")
+    }));
+    let tech = parse_usatoday_sitemap_bytes(bytes, "tech", UsaTodaySitemapFilter::Tech).unwrap();
+    assert!(!tech.is_empty());
+    assert!(tech.iter().all(|a| a.url.to_ascii_lowercase().contains("/story/tech/")));
+    let ent = parse_usatoday_sitemap_bytes(
+        bytes,
+        "entertainment",
+        UsaTodaySitemapFilter::Entertainment,
+    )
+    .unwrap();
+    assert!(!ent.is_empty());
+    assert!(ent
+        .iter()
+        .all(|a| a.url.to_ascii_lowercase().contains("/story/entertainment/")));
+    // sports blocks in fixture must not leak into nation/tech/ent
+    assert!(nation.iter().all(|a| !a.url.contains("/story/sports/")));
+}
+
+#[test]
+fn parses_usatoday_article_body_fixture() {
+    let bytes = include_bytes!("fixtures/usatoday_article.html");
+    let summary = parse_usatoday_article_body_bytes(bytes).expect("summary");
+    assert!(summary.len() > 40, "{summary}");
+}
+
+#[test]
+fn defaults_include_usatoday_on_top_tech_entertainment() {
+    let cfg = ChannelConfig::defaults().unwrap();
+    let top = cfg.get("top").unwrap();
+    assert!(top.feeds.iter().any(|u| u.contains("usatoday.com/news/nation")));
+    assert!(top
+        .feeds
+        .iter()
+        .any(|u| u.contains("news-sitemap.xml#nation")));
+    let tech = cfg.get("tech").unwrap();
+    assert!(tech.feeds.iter().any(|u| u.contains("usatoday.com/tech")));
+    assert!(tech
+        .feeds
+        .iter()
+        .any(|u| u.contains("news-sitemap.xml#tech")));
+    let ent = cfg.get("entertainment").unwrap();
+    assert!(ent.enabled);
+    assert!(ent.personal);
+    assert!(ent
+        .feeds
+        .iter()
+        .any(|u| u.contains("usatoday.com/entertainment")));
+    assert!(ent
+        .feeds
+        .iter()
+        .any(|u| u.contains("news-sitemap.xml#entertainment")));
 }

@@ -1,6 +1,7 @@
 use crate::error::{Error, Result};
 use crate::model::Article;
 use crate::floridatoday::{fetch_floridatoday, is_floridatoday_url};
+use crate::usatoday::{fetch_usatoday, is_usatoday_url};
 use crate::nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
 use feed_rs::parser;
 
@@ -11,6 +12,10 @@ pub fn fetch_feed(url: &str, channel_id: &str) -> Result<Vec<Article>> {
     if is_floridatoday_url(url) {
         // Personal subscriber HTML/sitemap path (cookie optional; see floridatoday module).
         return fetch_floridatoday(url, channel_id);
+    }
+    if is_usatoday_url(url) {
+        // Personal Gannett HTML/sitemap path (cookie optional; see usatoday module).
+        return fetch_usatoday(url, channel_id);
     }
     let client = reqwest::blocking::Client::builder()
         .user_agent(USER_AGENT)
