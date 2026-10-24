@@ -1,12 +1,10 @@
-# ChannelCast Android (Gradle)
+# ChannelCast Android Gradle project
 
-Product flavors: **mobile** (phone) and **tv** (Android TV leanback).
+See [../docs/ANDROID.md](../docs/ANDROID.md).
 
-See [docs/ANDROID.md](../docs/ANDROID.md) for build, sideload, and launcher deep-link instructions.
+Quick path:
 
 ```bash
-./gradlew :app:assembleTvDebug
-./gradlew :app:assembleMobileDebug
+../android/scripts/build-native.sh   # from repo root: ./android/scripts/build-native.sh
+./gradlew :app:assembleTvDebug :app:assembleMobileDebug
 ```
-
-APKs: `app/build/outputs/apk/{tv,mobile}/debug/` — also copy to `dist/` (gitignored `*.apk`).

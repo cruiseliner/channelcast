@@ -1,12 +1,12 @@
-name: Android stub (manual)
+name: Android APKs (manual)
 
-# Intentionally NOT on push/PR — must not fail desktop cargo CI when SDK missing.
+# Intentionally NOT on push/PR — needs NDK; must not gate desktop cargo CI.
 on:
   workflow_dispatch:
 
 jobs:
-  assemble-stub:
-    name: assemble mobile + tv debug
+  assemble:
+    name: native + mobile + tv debug APKs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,8 +17,24 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: Set up Android SDK + NDK
         uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: |
+          yes | sdkmanager --install "ndk;27.0.12077973" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+
+      - name: Build native libs
+        run: ./android/scripts/build-native.sh
 
       - name: Assemble debug APKs
         working-directory: android
@@ -35,10 +51,10 @@ jobs:
             android/dist/channelcast-mobile-debug.apk
           ls -lh android/dist
 
-      - name: Upload stub APKs
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: channelcast-android-stub-apks
+          name: channelcast-android-apks
           path: |
             android/dist/channelcast-tv-debug.apk
             android/dist/channelcast-mobile-debug.apk

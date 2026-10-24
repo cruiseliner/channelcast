@@ -4,11 +4,12 @@ members = [
     "crates/channelcast-core",
     "crates/channelcast-cli",
     "crates/channelcast-desktop",
+    "crates/channelcast-ffi",
 ]
 default-members = ["crates/channelcast-cli", "crates/channelcast-core"]
 
 [workspace.package]
-version = "0.1.5"
+version = "0.1.7"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/cruiseliner/channelcast"

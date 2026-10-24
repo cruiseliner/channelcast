@@ -1,5 +1,11 @@
 # ChannelCast
 
+## What's new in v0.1.7 (Android)
+
+- **UniFFI bridge**: TV + phone APKs load **real headlines** from `channelcast-core` (Watchman, Space Coast, Top, …)
+- Native libs: `arm64-v8a` + `armeabi-v7a` via `cargo-ndk`
+- Release: [v0.1.7-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.7-android)
+
 ## What's new in v0.1.5
 
 - Desktop **story pane**: in-app headline blurbs without opening the browser
@@ -7,7 +13,7 @@
 - Desktop `--channel <id>` and `--screenshot <path>` flags
 
 
-On-demand multi-channel news app (PointCast-inspired). **Rust core** + CLI + **egui desktop** + **Android scaffold** (phone + TV flavors; APKs not on Releases yet).
+On-demand multi-channel news app (PointCast-inspired). **Rust core** + CLI + **egui desktop** + **Android TV/phone** (UniFFI; APKs on Releases).
 
 **Shipping name:** ChannelCast (not PointCast — that 1990s name was later co-opted).
 
@@ -47,7 +53,7 @@ flowchart LR
   subgraph ui [Thin UI]
     CLI[channelcast CLI]
     Desk[Desktop egui]
-    And[Android scaffold]
+    And[Android TV / phone UniFFI]
   end
   RSS --> Fetch
   NWS --> Fetch
@@ -56,7 +62,7 @@ flowchart LR
   Cfg --> Fetch --> Kw --> Rank --> Store
   Store --> CLI
   Store --> Desk
-  Store -.-> And
+  Rank --> And
 ```
 
 ## Downloads
@@ -77,6 +83,17 @@ Unpack and run `channelcast` (`channelcast.exe` on Windows). Each archive also i
 ### Desktop GUI
 
 egui/eframe shell — channel list + headlines; opens articles in your browser.
+
+### Android (TV + phone)
+
+Debug APKs on [v0.1.7-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.7-android):
+
+| Device | Asset | Package (debug) |
+|--------|-------|-----------------|
+| Android TV / Google TV | `channelcast-tv-debug.apk` | `com.cruiseliner.channelcast.tv.debug` |
+| Phone (S25 Ultra) | `channelcast-mobile-debug.apk` | `com.cruiseliner.channelcast.debug` |
+
+See [docs/ANDROID.md](docs/ANDROID.md) for sideload + launcher deep links (`channelcast://channel/watchman`).
 
 | Platform | Asset |
 |----------|-------|

@@ -38,3 +38,6 @@ android/.cxx/
 
 android/.kotlin/
 android/dist/*.apk
+
+# Native libs built by android/scripts/build-native.sh (APK Release assets carry them)
+android/app/src/main/jniLibs/**/*.so
