@@ -50,6 +50,29 @@ flowchart LR
   Store -.-> And
 ```
 
+## Downloads
+
+Prebuilt **CLI** binaries (Windows / Linux / macOS) are published on the [Releases](https://github.com/cruiseliner/channelcast/releases) page when a `v*` tag is pushed:
+
+| Platform | Asset |
+|----------|-------|
+| Windows x64 | `channelcast-cli-windows-x64.zip` |
+| Linux x64 | `channelcast-cli-linux-x64.tar.gz` |
+| macOS Intel x64 | `channelcast-cli-macos-x64.tar.gz` |
+| macOS Apple Silicon (arm64) | `channelcast-cli-macos-arm64.tar.gz` |
+
+Unpack and run `channelcast` (`channelcast.exe` on Windows). Each archive also includes `README.md`, `LICENSE`, and a starter `channels.toml`.
+
+**Android APK:** not available yet — planned later as a thin shell around `channelcast-core` (UniFFI/JNI). There is no APK download today; do not expect one in Releases until that ships.
+
+**Build from source** (any platform with a Rust toolchain):
+
+```bash
+cargo install --path crates/channelcast-cli
+# or from a clone:
+cargo run -p channelcast-cli -- --help
+```
+
 ## Quick start
 
 ```bash
@@ -164,7 +187,7 @@ Fixture-based tests (RSS + Atom parse, cache round-trip, keyword filter) do not 
 
 ## Roadmap
 
-1. **Now** — Rust core + CLI (this repo)
+1. **Now** — Rust core + CLI (this repo); GitHub Releases for Win/Linux/Mac CLI binaries
 2. **Desktop UI** — Windows first (egui/iced or similar), then Linux/Mac
 3. **Weather / local / spacecoast** — done for ZIP 32920 (NWS MLB + Brevard RSS + KSC/NASA/SpaceX feeds); other ZIPs need their own grid/feeds
 4. **Android APK** — thin shell + `channelcast-core` via UniFFI/JNI
