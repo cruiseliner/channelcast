@@ -62,7 +62,11 @@ feeds = [
   "https://www.jpost.com/rss/rssfeedsfrontpage.aspx",
   "https://www.timesofisrael.com/feed/",
   "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml",
+  "https://www.israeltoday.co.il/feed/",
 ]
+# Pending (Cloudflare / WAF 403 from automated fetch — add when reachable or via local OPML):
+#   https://israel365news.com/feed/
+#   https://breakingisraelnews.com/feed/
 # Case-insensitive match against title + summary. Edit freely.
 # Tight v1: dropped broad israel/jerusalem (and war-flood terms that match most ME headlines).
 # Geographic watch + prophecy lexicon only — edit freely.
@@ -84,6 +88,15 @@ keywords = [
   "armageddon",
   "megiddo",
   "gog and magog",
+  # false-messiah / Knesset "Yeshua" watch (e.g. Israel Today "Son of David" PM story)
+  "yeshua",
+  "son of david",
+  "false messiah",
+  "false christ",
+  "antichrist",
+  "anti-messiah",
+  "messiah candidate",
+  "jesus, son of david",
 ]
 
 [[channels]]
