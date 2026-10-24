@@ -47,7 +47,7 @@ fn defaults_config_loads() {
     assert!(pw.personal);
     assert!(!pw.feeds.is_empty());
     let w = cfg.get("watchman").unwrap();
-    assert!(!w.enabled);
+    assert!(w.enabled);
     assert!(w.personal);
     assert!(!w.keywords.is_empty());
     assert!(!w.feeds.is_empty());

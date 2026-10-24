@@ -100,7 +100,7 @@ cargo run -p channelcast-cli -- channels --all   # include disabled personal cha
 cargo run -p channelcast-cli -- headlines tech
 cargo run -p channelcast-cli -- headlines top -n 10
 cargo run -p channelcast-cli -- headlines prowrestling
-cargo run -p channelcast-cli -- headlines watchman   # works even when disabled in listing
+cargo run -p channelcast-cli -- headlines watchman
 cargo run -p channelcast-cli -- headlines weather    # NWS Cape Canaveral / ZIP 32920
 cargo run -p channelcast-cli -- headlines local
 cargo run -p channelcast-cli -- headlines spacecoast
@@ -141,7 +141,7 @@ Optional flags:
 | `markets` | on | BBC Business, CNBC Top News |
 | `sports` | on | BBC Sport, ESPN Top |
 | `prowrestling` | on, personal | Fightful, F4W Online |
-| `watchman` | **disabled by default**, personal | Jerusalem Post frontpage, Times of Israel, BBC Middle East + keyword filter |
+| `watchman` | **enabled by default** (End Times / Israel), personal | Jerusalem Post frontpage, Times of Israel, BBC Middle East + keyword filter |
 | `weather` | on, personal | ZIP **32920** Cape Canaveral FL — NWS MLB grid 56,65 forecast JSON + alerts Atom zone FLZ747 |
 | `local` | on, personal | Space Coast Daily + Florida Today `/space/` HTML (cookie optional) |
 | `spacecoast` | on, personal | NASA Kennedy + Artemis, Spaceflight Now, NASASpaceflight + Florida Today space listing/sitemap (cookie optional) + KSC/SpaceX/Blue Origin keywords |
