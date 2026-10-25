@@ -8,7 +8,7 @@
 
 [[channels]]
 id = "top"
-name = "Top"
+name = "Top Stories"
 description = "World / US national headlines. Free RSS + personal USA Today nation/politics HTML/sitemap (cookie optional)."
 feeds = [
   "https://feeds.bbci.co.uk/news/world/rss.xml",
@@ -20,49 +20,19 @@ feeds = [
 ]
 
 [[channels]]
-id = "tech"
-name = "Tech"
-description = "Technology and software. Free RSS + personal USA Today tech HTML/sitemap (cookie optional)."
-feeds = [
-  "https://hnrss.org/frontpage",
-  "https://feeds.arstechnica.com/arstechnica/index",
-  # Personal USA Today tech desk (Gannett HTML/sitemap — no public RSS).
-  "https://www.usatoday.com/tech/",
-  "https://www.usatoday.com/news-sitemap.xml#tech",
-]
-
-[[channels]]
-id = "markets"
-name = "Markets"
-description = "Business and markets"
-feeds = [
-  "https://feeds.bbci.co.uk/news/business/rss.xml",
-  "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-]
-
-
-[[channels]]
-id = "entertainment"
-name = "Entertainment"
-description = "Entertainment headlines. Personal USA Today entertainment HTML/sitemap (cookie optional) — no public RSS."
+id = "weather"
+name = "Weather"
+description = "NWS forecast + alerts for ZIP 32920 (Cape Canaveral / Cocoa Beach FL). Forecast is NWS JSON (core nws module); alerts are Atom."
 enabled = true
 personal = true
 feeds = [
-  "https://www.usatoday.com/entertainment/",
-  "https://www.usatoday.com/news-sitemap.xml#entertainment",
+  # Active alerts first (Atom — feed-rs); dated so they rank above forecast periods
+  "https://api.weather.gov/alerts/active.atom?zone=FLZ747",
+  # 7-day forecast JSON → Article per period (ChannelCast nws parser)
+  "https://api.weather.gov/gridpoints/MLB/56,65/forecast",
 ]
-# USA Today = national / tech / entertainment; Florida Today stays Space Coast / local.
-
-[[channels]]
-id = "prowrestling"
-name = "Pro Wrestling"
-description = "Pro wrestling news (personal). Free public RSS only."
-enabled = true
-personal = true
-feeds = [
-  "https://www.fightful.com/feed",
-  "https://www.f4wonline.com/feed",
-]
+# Also useful: hourly https://api.weather.gov/gridpoints/MLB/56,65/forecast/hourly
+# Point alerts: https://api.weather.gov/alerts/active.atom?point=28.3903,-80.6043
 
 [[channels]]
 id = "watchman"
@@ -117,19 +87,48 @@ keywords = [
 # Points: https://api.weather.gov/points/28.3903,-80.6043 (HTTP 200, 2026-10-24)
 
 [[channels]]
-id = "weather"
-name = "Weather"
-description = "NWS forecast + alerts for ZIP 32920 (Cape Canaveral / Cocoa Beach FL). Forecast is NWS JSON (core nws module); alerts are Atom."
+id = "markets"
+name = "Markets"
+description = "Business and markets"
+feeds = [
+  "https://feeds.bbci.co.uk/news/business/rss.xml",
+  "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+]
+
+[[channels]]
+id = "tech"
+name = "Tech"
+description = "Technology and software. Free RSS + personal USA Today tech HTML/sitemap (cookie optional)."
+feeds = [
+  "https://hnrss.org/frontpage",
+  "https://feeds.arstechnica.com/arstechnica/index",
+  # Personal USA Today tech desk (Gannett HTML/sitemap — no public RSS).
+  "https://www.usatoday.com/tech/",
+  "https://www.usatoday.com/news-sitemap.xml#tech",
+]
+
+[[channels]]
+id = "entertainment"
+name = "Entertainment"
+description = "Entertainment headlines. Personal USA Today entertainment HTML/sitemap (cookie optional) — no public RSS."
 enabled = true
 personal = true
 feeds = [
-  # Active alerts first (Atom — feed-rs); dated so they rank above forecast periods
-  "https://api.weather.gov/alerts/active.atom?zone=FLZ747",
-  # 7-day forecast JSON → Article per period (ChannelCast nws parser)
-  "https://api.weather.gov/gridpoints/MLB/56,65/forecast",
+  "https://www.usatoday.com/entertainment/",
+  "https://www.usatoday.com/news-sitemap.xml#entertainment",
 ]
-# Also useful: hourly https://api.weather.gov/gridpoints/MLB/56,65/forecast/hourly
-# Point alerts: https://api.weather.gov/alerts/active.atom?point=28.3903,-80.6043
+# USA Today = national / tech / entertainment; Florida Today stays Space Coast / local.
+
+[[channels]]
+id = "prowrestling"
+name = "Pro Wrestling"
+description = "Pro wrestling news (personal). Free public RSS only."
+enabled = true
+personal = true
+feeds = [
+  "https://www.fightful.com/feed",
+  "https://www.f4wonline.com/feed",
+]
 
 [[channels]]
 id = "local"
@@ -158,12 +157,14 @@ feeds = [
   "https://blogs.nasa.gov/artemis/feed/",
   "https://spaceflightnow.com/feed/",
   "https://www.nasaspaceflight.com/feed/",
+  "https://spacenews.com/feed/",
+  "https://nasawatch.com/feed/",
   # Personal Florida Today: section listing + news-sitemap (space-path filter). Not RSS.
   # Cookie optional (CHANNELCAST_FLORIDATODAY_COOKIE or .channelcast/floridatoday.cookies).
   "https://www.floridatoday.com/space/",
   "https://www.floridatoday.com/news-sitemap.xml#space",
 ]
-# Also verified 200: nasa.gov/rss/dyn/breaking_news.rss, spacenews.com/feed/, space.com/feeds/news
+# Also verified 200: nasa.gov/rss/dyn/breaking_news.rss, space.com/feeds/news
 # Dropped: blogs.nasa.gov/commercialcrew/feed/ (200 HTML); Blue Origin / SpaceX official RSS (no usable feed);
 # Florida Today RSS paths 404 — HTML/sitemap path added instead (personal subscriber use).
 # Optional tighter filter — edit freely:

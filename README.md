@@ -6,13 +6,13 @@
 - Story detail pane: select a headline for full summary; **Open article** / second click loads WebView
 - **Sports** channel removed
 - Default channel on open is **top** (not Watchman)
-- Release: [v0.1.13-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.13-android)
+- Release: [v0.1.14-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.14-android)
 
 ## What's new in v0.1.7 (Android)
 
 - **UniFFI bridge**: TV + phone APKs load **real headlines** from `channelcast-core` (Watchman, Space Coast, Top, …)
 - Native libs: `arm64-v8a` + `armeabi-v7a` via `cargo-ndk`
-- Release: [v0.1.13-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.13-android)
+- Release: [v0.1.14-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.14-android)
 
 ## What's new in v0.1.5
 
@@ -94,7 +94,7 @@ egui/eframe shell — channel list + headlines; opens articles in your browser.
 
 ### Android (TV + phone)
 
-Debug APKs on [v0.1.13-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.13-android):
+Debug APKs on [v0.1.14-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.14-android):
 
 | Device | Asset | Package (debug) |
 |--------|-------|-----------------|

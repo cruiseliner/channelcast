@@ -12,7 +12,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,11 +24,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -41,7 +47,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -61,7 +69,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val initial = channelIdFromIntent(intent)
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = Color(0xFFE8ECF4),
+                    onPrimary = Color(0xFF12141A),
+                    secondary = Color(0xFF8FA3C1),
+                    surface = Color(0xFF0E1014),
+                    onSurface = Color(0xFFE8ECF4),
+                    onSurfaceVariant = Color(0xFF9AA3B5),
+                ),
+            ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ChannelCastScreen(
                         initialChannelId = initial,
@@ -329,16 +346,15 @@ fun ChannelCastScreen(
             ) {
                 items(channels, key = { it.id }) { ch ->
                     val selected = ch.id == selectedId
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(if (selected) Color(0xFF2A3344) else Color.Transparent)
-                            .clickable { selectedId = ch.id }
-                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                    FocusSelectRow(
+                        selected = selected,
+                        onClick = { selectedId = ch.id },
                     ) {
                         Text(
                             text = ch.name,
                             style = MaterialTheme.typography.titleMedium,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (selected) Color(0xFFF2F5FA) else Color(0xFFC5CDD8),
                         )
                         Text(
                             text = ch.id,
@@ -395,20 +411,22 @@ fun ChannelCastScreen(
                 ) {
                     items(headlines, key = { it.url + it.title }) { h ->
                         val selected = selectedHeadline?.url == h.url && selectedHeadline?.title == h.title
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(if (selected) Color(0xFF1E2633) else Color.Transparent)
-                                .clickable {
-                                    if (selected) {
-                                        onOpenUrl(h.url, h.title, h.summary)
-                                    } else {
-                                        selectedHeadline = h
-                                    }
+                        FocusSelectRow(
+                            selected = selected,
+                            onClick = {
+                                if (selected) {
+                                    onOpenUrl(h.url, h.title, h.summary)
+                                } else {
+                                    selectedHeadline = h
                                 }
-                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                            },
+                            selectedFill = Color(0xFF1E2633),
                         ) {
-                            Text(h.title, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                h.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            )
                             val meta = buildString {
                                 append(h.source)
                                 h.published?.let { append(" · "); append(it.take(16).replace('T', ' ')) }
@@ -429,7 +447,6 @@ fun ChannelCastScreen(
                                 )
                             }
                         }
-                        HorizontalDivider()
                     }
                 }
             }
@@ -472,5 +489,50 @@ fun ChannelCastScreen(
                 )
             }
         }
+    }
+}
+
+
+/** One clear TV/remote treatment: fill = active selection, amber border = D-pad focus. No Material underline. */
+@Composable
+private fun FocusSelectRow(
+    selected: Boolean,
+    onClick: () -> Unit,
+    selectedFill: Color = Color(0xFF2A3344),
+    content: @Composable () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(8.dp)
+    val focusAccent = Color(0xFFFFC857)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(if (selected) selectedFill else Color.Transparent, shape)
+            .then(if (focused) Modifier.border(2.dp, focusAccent, shape) else Modifier)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(vertical = 10.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(end = 10.dp)
+                .width(4.dp)
+                .height(36.dp)
+                .background(
+                    color = when {
+                        focused -> focusAccent
+                        selected -> Color(0xFF6B7C93)
+                        else -> Color.Transparent
+                    },
+                    shape = RoundedCornerShape(2.dp),
+                ),
+        )
+        Column(modifier = Modifier.weight(1f)) { content() }
     }
 }
