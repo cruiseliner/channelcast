@@ -337,7 +337,7 @@ fun ChannelCastScreen(
                             .padding(vertical = 10.dp, horizontal = 8.dp),
                     ) {
                         Text(
-                            text = ch.name + if (ch.personal) " ●" else "",
+                            text = ch.name,
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(

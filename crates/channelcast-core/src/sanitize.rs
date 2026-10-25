@@ -22,8 +22,56 @@ pub fn sanitize_article(article: &mut Article) {
             }
         }
     }
-    article.summary = raw_summary.and_then(|s| clean_summary(&s));
+    let story_url = article.url.clone();
+    article.summary = raw_summary.and_then(|s| {
+        clean_summary(&s).or_else(|| hn_fallback_summary(&s, &story_url))
+    });
     article.url = normalize_article_url(&article.url).unwrap_or_default();
+}
+
+/// When HN RSS is metadata-only (no prose blurb), still give the UI something useful.
+fn hn_fallback_summary(raw: &str, story_url: &str) -> Option<String> {
+    let lower = raw.to_ascii_lowercase();
+    if !(lower.contains("points:") || lower.contains("comments url") || lower.contains("article url")) {
+        return None;
+    }
+    // Only for HN-shaped descriptions — don't invent blurbs for other feeds.
+    if !lower.contains("news.ycombinator.com") && !lower.contains("points:") {
+        return None;
+    }
+    let host = url_host(story_url).unwrap_or_else(|| "linked site".into());
+    let points = meta_number(raw, "Points:");
+    let comments = meta_number(raw, "# Comments:").or_else(|| meta_number(raw, "#Comments:"));
+    let mut parts = Vec::new();
+    parts.push(format!("From {host}"));
+    match points {
+        Some(p) => parts.push(format!("{p} points on Hacker News")),
+        None => parts.push("Discussed on Hacker News".into()),
+    }
+    if let Some(c) = comments {
+        parts.push(format!("{c} comments"));
+    }
+    Some(parts.join(" · "))
+}
+
+fn meta_number(raw: &str, label: &str) -> Option<u32> {
+    let lower = raw.to_ascii_lowercase();
+    let lab = label.to_ascii_lowercase();
+    let idx = lower.find(&lab)?;
+    let after = raw[idx + label.len()..].trim_start();
+    let digits: String = after.chars().take_while(|c| c.is_ascii_digit()).collect();
+    digits.parse().ok()
+}
+
+fn url_host(url: &str) -> Option<String> {
+    let u = url.trim();
+    let rest = u.strip_prefix("https://").or_else(|| u.strip_prefix("http://"))?;
+    let host = rest.split(['/', '?', '#']).next().unwrap_or("").trim();
+    if host.is_empty() {
+        None
+    } else {
+        Some(host.trim_start_matches("www.").to_string())
+    }
 }
 
 /// Sanitize a batch; drop items whose URL is not a usable absolute http(s) link.
@@ -423,6 +471,10 @@ mod tests {
             extract_story_url_from_description(raw).as_deref(),
             Some("https://example.com/story")
         );
+        let fb = hn_fallback_summary(raw, "https://example.com/story").unwrap();
+        assert!(fb.contains("example.com"), "{fb}");
+        assert!(fb.contains("42"), "{fb}");
+        assert!(!fb.to_ascii_lowercase().contains("comments url"), "{fb}");
     }
 
     #[test]
@@ -441,7 +493,10 @@ mod tests {
         };
         sanitize_article(&mut a);
         assert_eq!(a.url, "https://ars.example/a");
-        assert!(a.summary.is_none());
+        // Metadata-only HN desc → synthetic host/points blurb (not Comments URL).
+        let s = a.summary.as_deref().unwrap_or("");
+        assert!(s.contains("ars.example") || s.contains("Hacker News"), "{s}");
+        assert!(!s.to_ascii_lowercase().contains("comments url"), "{s}");
         assert!(is_hn_comments_url("https://news.ycombinator.com/item?id=1"));
         assert!(!is_hn_comments_url("https://example.com/post"));
     }

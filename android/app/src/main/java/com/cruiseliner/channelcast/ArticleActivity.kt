@@ -244,11 +244,11 @@ class ArticleActivity : ComponentActivity() {
         triedPrefetch = true
         val loadingTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "Article" }
         val earlySummary = intent.getStringExtra(EXTRA_SUMMARY).orEmpty().trim()
-        // Show feed blurb immediately — TV DNS/connect to some publishers can hang
-        // past HttpURLConnection timeouts, leaving a blank WebView.
+        val hasUsableSummary = earlySummary.length >= 40
+        // Always paint feed blurb (or title) immediately — never leave a blank WebView.
         webView?.loadDataWithBaseURL(
             url,
-            if (earlySummary.length >= 80) {
+            if (earlySummary.isNotBlank()) {
                 summaryReaderHtml(loadingTitle, earlySummary, url)
             } else {
                 """<!DOCTYPE html><html><head><meta charset="utf-8"/>
@@ -261,6 +261,12 @@ class ArticleActivity : ComponentActivity() {
             "UTF-8",
             null,
         )
+        // When the feed already has a blurb (HN meta, Ars, Fightful, …), stay on the
+        // summary reader — skip flaky publisher prefetch that times out on TV.
+        if (hasUsableSummary) {
+            android.util.Log.i("ChannelCast", "Summary-only reader (${earlySummary.length} chars); skip prefetch")
+            return
+        }
         io.execute {
             val fetchUrl = readerFetchUrl(url)
             android.util.Log.i("ChannelCast", "Prefetch fetchUrl=$fetchUrl")
@@ -317,7 +323,7 @@ class ArticleActivity : ComponentActivity() {
                         android.util.Log.w("ChannelCast", "Prefetch failed: ${err.message}")
                         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "Article" }
                         val summary = intent.getStringExtra(EXTRA_SUMMARY).orEmpty().trim()
-                        if (summary.length >= 80) {
+                        if (summary.isNotBlank()) {
                             android.util.Log.i("ChannelCast", "Using feed summary fallback (${summary.length} chars)")
                             titleState.value = title
                             wv.loadDataWithBaseURL(
@@ -328,20 +334,8 @@ class ArticleActivity : ComponentActivity() {
                                 null,
                             )
                         } else {
-                            val fallback = """<!DOCTYPE html><html><head><meta charset="utf-8">
-                                <style>body{font-family:sans-serif;background:#111;color:#eee;padding:32px;line-height:1.6}
-                                a{color:#8ab4f8;font-size:1.2rem;word-break:break-all}</style></head>
-                                <body><h1>$title</h1>
-                                <p>This TV WebView could not load the page (network timeout).</p>
-                                <p>Story link:</p><p><a href="$url">$url</a></p>
-                                <p style="color:#aaa;font-size:0.9rem">${err.message ?: ""}</p>
-                                </body></html>""".trimIndent()
-                            wv.loadDataWithBaseURL(url, fallback, "text/html", "UTF-8", null)
-                            Toast.makeText(
-                                this,
-                                "Could not load article: ${err.message ?: "timeout"}",
-                                Toast.LENGTH_LONG,
-                            ).show()
+                            // Keep the title page already painted; no error toast loop.
+                            android.util.Log.w("ChannelCast", "No summary + prefetch failed: ${err.message}")
                         }
                     },
                 )
