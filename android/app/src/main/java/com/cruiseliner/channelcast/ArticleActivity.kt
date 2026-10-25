@@ -45,6 +45,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.Charset
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.zip.GZIPInputStream
 
 /**
@@ -63,6 +65,7 @@ class ArticleActivity : ComponentActivity() {
     private var triedPrefetch = false
     private var loadUrlFailed = false
     private val io = Executors.newFixedThreadPool(2)
+    private val fetchIo = Executors.newCachedThreadPool()
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -239,11 +242,37 @@ class ArticleActivity : ComponentActivity() {
     private fun prefetchAndInject(url: String, alsoTryLoadUrlOnFail: Boolean = false) {
         if (triedPrefetch && !alsoTryLoadUrlOnFail) return
         triedPrefetch = true
+        val loadingTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "Article" }
+        val earlySummary = intent.getStringExtra(EXTRA_SUMMARY).orEmpty().trim()
+        // Show feed blurb immediately — TV DNS/connect to some publishers can hang
+        // past HttpURLConnection timeouts, leaving a blank WebView.
+        webView?.loadDataWithBaseURL(
+            url,
+            if (earlySummary.length >= 80) {
+                summaryReaderHtml(loadingTitle, earlySummary, url)
+            } else {
+                """<!DOCTYPE html><html><head><meta charset="utf-8"/>
+                <style>body{margin:0;background:#12141a;color:#e8eaed;font-family:sans-serif;padding:36px;line-height:1.5}
+                h1{color:#fff;font-size:1.6rem}</style></head>
+                <body><h1>${loadingTitle}</h1><p>Loading article…</p>
+                <p style="color:#9aa0a6;word-break:break-all">$url</p></body></html>"""
+            },
+            "text/html",
+            "UTF-8",
+            null,
+        )
         io.execute {
             val fetchUrl = readerFetchUrl(url)
             android.util.Log.i("ChannelCast", "Prefetch fetchUrl=$fetchUrl")
-            val result = runCatching { fetchHtml(fetchUrl) }
-                .onFailure { android.util.Log.w("ChannelCast", "Prefetch exception", it) }
+            val result = runCatching {
+                val fut = fetchIo.submit<Pair<String, String>> { fetchHtml(fetchUrl) }
+                try {
+                    fut.get(14, TimeUnit.SECONDS)
+                } catch (te: TimeoutException) {
+                    fut.cancel(true)
+                    error("prefetch timed out after 14s")
+                }
+            }.onFailure { android.util.Log.w("ChannelCast", "Prefetch exception", it) }
             android.util.Log.i(
                 "ChannelCast",
                 "Prefetch done ok=${result.isSuccess} err=${result.exceptionOrNull()?.message}",
@@ -267,19 +296,22 @@ class ArticleActivity : ComponentActivity() {
                             "Reader bodyChars=${reader.bodyChars} title=${reader.title.take(80)}",
                         )
                         titleState.value = reader.title
-                        if (!ArticleReader.isUseful(reader) && alsoTryLoadUrlOnFail && !loadUrlFailed) {
-                            android.util.Log.w("ChannelCast", "Reader thin; trying loadUrl")
-                            wv.loadUrl(url)
-                        } else {
-                            // Reader HTML — never inject the raw publisher shell (malformed on TV).
-                            wv.loadDataWithBaseURL(
-                                finalUrl,
-                                reader.html,
-                                "text/html",
-                                "UTF-8",
-                                finalUrl,
+                        // Always show extracted reader HTML on TV. Falling back to
+                        // loadUrl() causes ERR_TIMED_OUT on many publishers even when
+                        // our HTTP prefetch already succeeded.
+                        if (!ArticleReader.isUseful(reader)) {
+                            android.util.Log.w(
+                                "ChannelCast",
+                                "Reader thin (${reader.bodyChars} chars); still injecting reader HTML",
                             )
                         }
+                        wv.loadDataWithBaseURL(
+                            finalUrl,
+                            reader.html,
+                            "text/html",
+                            "UTF-8",
+                            finalUrl,
+                        )
                     },
                     onFailure = { err ->
                         android.util.Log.w("ChannelCast", "Prefetch failed: ${err.message}")
@@ -295,8 +327,6 @@ class ArticleActivity : ComponentActivity() {
                                 "UTF-8",
                                 null,
                             )
-                        } else if (alsoTryLoadUrlOnFail && !loadUrlFailed) {
-                            wv.loadUrl(url)
                         } else {
                             val fallback = """<!DOCTYPE html><html><head><meta charset="utf-8">
                                 <style>body{font-family:sans-serif;background:#111;color:#eee;padding:32px;line-height:1.6}
@@ -321,6 +351,7 @@ class ArticleActivity : ComponentActivity() {
 
     override fun onDestroy() {
         io.shutdownNow()
+        fetchIo.shutdownNow()
         webView?.apply {
             stopLoading()
             destroy()
@@ -419,8 +450,8 @@ class ArticleActivity : ComponentActivity() {
                 hops++
                 val conn = (URL(current).openConnection() as HttpURLConnection).apply {
                     instanceFollowRedirects = false
-                    connectTimeout = 15_000
-                    readTimeout = 25_000
+                    connectTimeout = 8_000
+                    readTimeout = 12_000
                     requestMethod = "GET"
                     setRequestProperty("User-Agent", DESKTOP_UA)
                     setRequestProperty(
