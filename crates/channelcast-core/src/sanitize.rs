@@ -6,16 +6,23 @@
 use crate::model::Article;
 
 /// Clean summary + URL on an article in place. Drop the summary when nothing
-/// readable remains after stripping tags / Google News link soup.
+/// readable remains after stripping tags / Google News / HN link soup.
 pub fn sanitize_article(article: &mut Article) {
     article.title = collapse_ws(&strip_tags(&article.title));
     if article.title.is_empty() {
         article.title = "(untitled)".into();
     }
-    article.summary = article
-        .summary
-        .take()
-        .and_then(|s| clean_summary(&s));
+    // Prefer the real story URL over an HN comments / item?id= link when the
+    // feed description embeds `Article URL: …`.
+    let raw_summary = article.summary.clone();
+    if let Some(ref raw) = raw_summary {
+        if let Some(story) = extract_story_url_from_description(raw) {
+            if article.url.is_empty() || is_hn_comments_url(&article.url) {
+                article.url = story;
+            }
+        }
+    }
+    article.summary = raw_summary.and_then(|s| clean_summary(&s));
     article.url = normalize_article_url(&article.url).unwrap_or_default();
 }
 
@@ -28,71 +35,215 @@ pub fn sanitize_articles(mut articles: Vec<Article>) -> Vec<Article> {
     articles
 }
 
+/// True when a URL is an HN discussion page (comments), not the linked story.
+pub fn is_hn_comments_url(url: &str) -> bool {
+    let lower = url.to_ascii_lowercase();
+    if !(lower.contains("news.ycombinator.com/item")
+        || lower.contains("news.ycombinator.com/reply"))
+    {
+        return false;
+    }
+    lower.contains("id=") || lower.contains("/item?")
+}
+
+/// Pull `Article URL: <a href="…">` / `Article URL: https://…` from HN-style HTML.
+pub fn extract_story_url_from_description(raw_html: &str) -> Option<String> {
+    let lower = raw_html.to_ascii_lowercase();
+    let key = "article url:";
+    let idx = lower.find(key)?;
+    let after = &raw_html[idx + key.len()..];
+    let after_l = after.to_ascii_lowercase();
+    if let Some(h) = after_l.find("href=") {
+        let rest = &after[h + 5..];
+        let rest_trim = rest.trim_start();
+        let quote = rest_trim.chars().next()?;
+        if quote == '"' || quote == '\'' {
+            let body = &rest_trim[1..];
+            if let Some(end) = body.find(quote) {
+                let u = decode_entities(&body[..end]).trim().to_string();
+                if is_valid_article_url(&u) && !is_hn_comments_url(&u) {
+                    return normalize_article_url(&u);
+                }
+            }
+        }
+    }
+    let trimmed = after.trim_start();
+    let token = trimmed
+        .split(|c: char| c.is_whitespace() || c == '<' || c == '"' || c == '\'')
+        .next()
+        .unwrap_or("");
+    let u = decode_entities(token)
+        .trim()
+        .trim_end_matches(['.', ',', ';'])
+        .to_string();
+    if is_valid_article_url(&u) && !is_hn_comments_url(&u) {
+        return normalize_article_url(&u);
+    }
+    None
+}
+
 /// Strip tags, decode entities, collapse whitespace. Empty → None.
-/// Also rejects Google News “Article URL:” / bare-anchor soup with no prose.
+/// Drops Google News / HN metadata soup (`Article URL`, `Comments URL`,
+/// `Points:`, `# Comments:`) so the UI never shows comments-URL lines.
 pub fn clean_summary(raw: &str) -> Option<String> {
-    let mut text = collapse_ws(&strip_tags(raw));
+    let stripped = strip_feed_metadata_blocks(raw);
+    let mut text = collapse_ws(&strip_tags(&stripped));
     if text.is_empty() {
         return None;
     }
-    // Drop leading "Article URL:…" soup (Google News / some CMS embeds), keep any prose after.
-    text = strip_article_url_prefix(&text);
+    text = strip_remaining_meta_labels(&text);
     text = collapse_ws(&text);
     if text.is_empty() {
         return None;
     }
-    if looks_like_url_only(&text) {
+    if looks_like_url_only(&text) || looks_like_hn_meta_only(&text) {
         return None;
     }
-    Some(text)
+    const MAX: usize = 400;
+    if text.chars().count() > MAX {
+        let truncated: String = text.chars().take(MAX).collect();
+        Some(format!("{truncated}…"))
+    } else {
+        Some(text)
+    }
 }
 
-fn strip_article_url_prefix(text: &str) -> String {
-    let lower = text.to_ascii_lowercase();
-    let Some(idx) = lower.find("article url:") else {
-        return text.to_string();
-    };
-    let after = &text[idx + "article url:".len()..];
-    // Skip the URL token(s) that follow, then keep remaining prose.
-    let mut rest = after.trim_start();
-    // May be "https://…" or bare path; consume until we hit sentence-like prose
-    // (space + capital letter word longer than a domain fragment) — simpler: if the
-    // remainder still starts with http, strip that one token.
-    if rest.to_ascii_lowercase().starts_with("http://") || rest.to_ascii_lowercase().starts_with("https://")
-        || rest.to_ascii_lowercase().starts_with("https:/")
-        || rest.to_ascii_lowercase().starts_with("http:/")
+/// Remove HN / GNews metadata paragraphs before tag strip so href text cannot leak.
+fn strip_feed_metadata_blocks(raw: &str) -> String {
+    let lower = raw.to_ascii_lowercase();
+    if !lower.contains("article url")
+        && !lower.contains("comments url")
+        && !lower.contains("points:")
+        && !lower.contains("# comments")
     {
-        if let Some(sp) = rest.find(char::is_whitespace) {
-            rest = rest[sp..].trim_start();
+        return raw.to_string();
+    }
+    let mut out = String::with_capacity(raw.len());
+    let mut start = 0usize;
+    let mut i = 0usize;
+    let bytes = raw.as_bytes();
+    while i < bytes.len() {
+        let at_break = if bytes[i] == b'<' {
+            let slice = &lower[i..];
+            slice.starts_with("</p>")
+                || slice.starts_with("<br")
+                || slice.starts_with("<p>")
+                || slice.starts_with("<p ")
         } else {
-            rest = "";
-        }
-    } else {
-        // "Article URL:x Rest…" or "Article URL: Rest" — drop first short token if tiny
-        if let Some(sp) = rest.find(char::is_whitespace) {
-            let first = &rest[..sp];
-            if first.len() < 8 || first.contains('/') {
-                rest = rest[sp..].trim_start();
+            bytes[i] == b'\n'
+        };
+        let at_end = i + 1 == bytes.len();
+        if at_break || at_end {
+            let end = if at_break { i } else { i + 1 };
+            if start < end {
+                let chunk = &raw[start..end];
+                if !is_metadata_chunk(&chunk.to_ascii_lowercase()) {
+                    if !out.is_empty() {
+                        out.push(' ');
+                    }
+                    out.push_str(chunk);
+                }
             }
-        } else if rest.len() < 80 && (rest.contains('/') || rest.contains('.')) {
-            rest = "";
+            if at_break {
+                if bytes[i] == b'<' {
+                    if let Some(rel) = raw[i..].find('>') {
+                        i = i + rel + 1;
+                        start = i;
+                        continue;
+                    }
+                } else {
+                    i += 1;
+                    start = i;
+                    continue;
+                }
+            } else {
+                break;
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+fn is_metadata_chunk(chunk_lower: &str) -> bool {
+    let t = collapse_ws(chunk_lower);
+    if t.is_empty() {
+        return true;
+    }
+    if t.contains("article url") || t.contains("comments url") {
+        return true;
+    }
+    let points = t.contains("points:");
+    let ncomments = t.contains("# comments") || t.contains("#comments");
+    if !(points || ncomments) {
+        return false;
+    }
+    // Short score/comment count lines with no real prose.
+    let alpha: String = t
+        .chars()
+        .filter(|c| c.is_ascii_alphabetic() || c.is_whitespace() || *c == '#')
+        .collect();
+    let compact = collapse_ws(&alpha);
+    compact.len() < 48
+}
+
+/// After tag strip, remove leftover "Comments URL: https://…" / "Points: N" tails.
+fn strip_remaining_meta_labels(text: &str) -> String {
+    let mut s = text.to_string();
+    let labels = [
+        "comments url:",
+        "comment url:",
+        "article url:",
+        "points:",
+        "# comments:",
+        "#comments:",
+    ];
+    for label in labels {
+        loop {
+            let lower = s.to_ascii_lowercase();
+            let Some(idx) = lower.find(label) else { break };
+            let prefix = s[..idx].trim_end().to_string();
+            let mut rest = s[idx + label.len()..].trim_start().to_string();
+            let rest_l = rest.to_ascii_lowercase();
+            if rest_l.starts_with("http://") || rest_l.starts_with("https://") {
+                if let Some(sp) = rest.find(char::is_whitespace) {
+                    rest = rest[sp..].trim_start().to_string();
+                } else {
+                    rest.clear();
+                }
+            } else if let Some(sp) = rest.find(char::is_whitespace) {
+                let first = &rest[..sp];
+                if first.chars().all(|c| c.is_ascii_digit())
+                    || first.len() < 12
+                    || first.contains('/')
+                {
+                    rest = rest[sp..].trim_start().to_string();
+                }
+            } else if rest.chars().all(|c| c.is_ascii_digit()) || rest.len() < 12 {
+                rest.clear();
+            }
+            s = if prefix.is_empty() {
+                rest
+            } else if rest.is_empty() {
+                prefix
+            } else {
+                format!("{prefix} {rest}")
+            };
         }
     }
-    // If "Article URL" was mid-string, also drop the prefix before it when it's empty-ish.
-    let before = text[..idx].trim();
-    if before.is_empty() {
-        rest.to_string()
-    } else if rest.is_empty() {
-        before.to_string()
-    } else {
-        format!("{before} {rest}")
-    }
+    s
+}
+
+fn looks_like_hn_meta_only(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    lower.contains("comments url")
+        || lower.contains("article url")
+        || lower.contains("news.ycombinator.com/item")
 }
 
 fn looks_like_url_only(text: &str) -> bool {
     let t = text.trim();
     if t.starts_with("http://") || t.starts_with("https://") {
-        // Entire blurb is one URL, or URL + short source name.
         let rest = t
             .split_whitespace()
             .skip(1)
@@ -260,6 +411,39 @@ mod tests {
             normalize_article_url("https://www.fightful.com/wrestling-news/foo/").as_deref(),
             Some("https://www.fightful.com/wrestling-news/foo/")
         );
+    }
+
+    #[test]
+    fn hn_description_is_not_a_snippet() {
+        let raw = r#"<p>Article URL: <a href="https://example.com/story">https://example.com/story</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=1">https://news.ycombinator.com/item?id=1</a></p>
+<p>Points: 42</p><p># Comments: 7</p>"#;
+        assert_eq!(clean_summary(raw), None);
+        assert_eq!(
+            extract_story_url_from_description(raw).as_deref(),
+            Some("https://example.com/story")
+        );
+    }
+
+    #[test]
+    fn prefer_story_over_comments_link() {
+        let mut a = Article {
+            title: "T".into(),
+            url: "https://news.ycombinator.com/item?id=9".into(),
+            summary: Some(
+                r#"<p>Article URL: <a href="https://ars.example/a">x</a></p>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=9">y</a></p>"#
+                    .into(),
+            ),
+            published: None,
+            source: "t".into(),
+            channel_id: "tech".into(),
+        };
+        sanitize_article(&mut a);
+        assert_eq!(a.url, "https://ars.example/a");
+        assert!(a.summary.is_none());
+        assert!(is_hn_comments_url("https://news.ycombinator.com/item?id=1"));
+        assert!(!is_hn_comments_url("https://example.com/post"));
     }
 
     #[test]

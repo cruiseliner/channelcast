@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ChannelCastScreen(
                         initialChannelId = initial,
-                        onOpenUrl = { url, title -> openArticle(url, title) },
+                        onOpenUrl = { url, title, summary -> openArticle(url, title, summary) },
                     )
                 }
             }
@@ -92,12 +92,16 @@ class MainActivity : ComponentActivity() {
         return uiMode == Configuration.UI_MODE_TYPE_TELEVISION
     }
 
-    private fun openInWebView(url: String, title: String?) {
+    private fun openInWebView(url: String, title: String?, summary: String? = null) {
         startActivity(
             Intent(this, ArticleActivity::class.java).apply {
                 putExtra(ArticleActivity.EXTRA_URL, url)
                 if (!title.isNullOrBlank()) {
                     putExtra(ArticleActivity.EXTRA_TITLE, title)
+                }
+                val clean = plainTextSummary(summary)
+                if (!clean.isNullOrBlank()) {
+                    putExtra(ArticleActivity.EXTRA_SUMMARY, clean.take(4000))
                 }
             },
         )
@@ -107,7 +111,7 @@ class MainActivity : ComponentActivity() {
      * TV: always use in-app WebView (no browser / Custom Tabs on most TCL sets).
      * Phone: Custom Tabs → ACTION_VIEW → WebView fallback.
      */
-    private fun openArticle(url: String, title: String? = null) {
+    private fun openArticle(url: String, title: String? = null, summary: String? = null) {
         if (!isValidHttpUrl(url)) {
             Toast.makeText(this, "No usable link for this story", Toast.LENGTH_SHORT).show()
             Log.w(TAG, "Rejecting bad article URL: $url")
@@ -116,7 +120,7 @@ class MainActivity : ComponentActivity() {
         val uri = Uri.parse(url.trim())
         if (isTelevision()) {
             // Prefer in-app WebView on TV (no reliable browser on many TCL sets).
-            openInWebView(url.trim(), title)
+            openInWebView(url.trim(), title, summary)
             return
         }
         try {
@@ -129,7 +133,7 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent(Intent.ACTION_VIEW, uri))
         } catch (e: Exception) {
             Log.w(TAG, "No browser for $url — WebView", e)
-            openInWebView(url.trim(), title)
+            openInWebView(url.trim(), title, summary)
         }
     }
 
@@ -148,13 +152,62 @@ fun plainTextSummary(raw: String?): String? {
         @Suppress("DEPRECATION")
         Html.fromHtml(raw)
     }
-    val plain = spanned.toString().replace('\u00A0', ' ').trim().replace(Regex("\\s+"), " ")
+    var plain = spanned.toString().replace('\u00A0', ' ').trim().replace(Regex("\\s+"), " ")
     if (plain.isEmpty()) return null
+    // Drop HN / GNews metadata soup: Article URL, Comments URL, Points, # Comments.
+    // Never show a comments URL line as the story snippet.
+    val metaLabels = listOf(
+        "comments url:",
+        "comment url:",
+        "article url:",
+        "points:",
+        "# comments:",
+        "#comments:",
+    )
+    for (label in metaLabels) {
+        while (true) {
+            val lower = plain.lowercase()
+            val idx = lower.indexOf(label)
+            if (idx < 0) break
+            val prefix = plain.substring(0, idx).trimEnd()
+            var rest = plain.substring(idx + label.length).trimStart()
+            val restL = rest.lowercase()
+            rest = when {
+                restL.startsWith("http://") || restL.startsWith("https://") -> {
+                    val sp = rest.indexOfFirst { it.isWhitespace() }
+                    if (sp >= 0) rest.substring(sp).trimStart() else ""
+                }
+                else -> {
+                    val sp = rest.indexOfFirst { it.isWhitespace() }
+                    if (sp < 0) {
+                        if (rest.all { it.isDigit() } || rest.length < 12) "" else rest
+                    } else {
+                        val first = rest.substring(0, sp)
+                        if (first.all { it.isDigit() } || first.length < 12 || '/' in first) {
+                            rest.substring(sp).trimStart()
+                        } else {
+                            rest
+                        }
+                    }
+                }
+            }
+            plain = listOf(prefix, rest).filter { it.isNotBlank() }.joinToString(" ").trim()
+        }
+    }
+    if (plain.isEmpty()) return null
+    // HN leftover after label strip is often just "42 7" (points + comment count).
+    val letterCount = plain.count { it.isLetter() }
+    if (letterCount < 20) return null
     val lower = plain.lowercase()
-    if (lower.startsWith("article url:")) {
-        val rest = plain.substringAfter(':').trim()
-        val afterUrl = rest.split(Regex("\\s+"), limit = 2).getOrNull(1)?.trim().orEmpty()
-        return afterUrl.ifBlank { null }
+    if (lower.contains("comments url") ||
+        lower.contains("article url") ||
+        lower.contains("news.ycombinator.com/item")
+    ) {
+        return null
+    }
+    if (lower.startsWith("http://") || lower.startsWith("https://")) {
+        val after = plain.split(Regex("\\s+"), limit = 2).getOrNull(1).orEmpty()
+        if (after.length < 40) return null
     }
     if ('<' in plain || '>' in plain) {
         return plain.replace(Regex("<[^>]*>"), "").trim().ifBlank { null }
@@ -179,7 +232,7 @@ fun isValidHttpUrl(url: String): Boolean {
 @Composable
 fun ChannelCastScreen(
     initialChannelId: String?,
-    onOpenUrl: (String, String?) -> Unit,
+    onOpenUrl: (String, String?, String?) -> Unit,
 ) {
     var channels by remember { mutableStateOf<List<FfiChannel>>(emptyList()) }
     var channelsError by remember { mutableStateOf<String?>(null) }
@@ -348,7 +401,7 @@ fun ChannelCastScreen(
                                 .background(if (selected) Color(0xFF1E2633) else Color.Transparent)
                                 .clickable {
                                     if (selected) {
-                                        onOpenUrl(h.url, h.title)
+                                        onOpenUrl(h.url, h.title, h.summary)
                                     } else {
                                         selectedHeadline = h
                                     }
@@ -414,7 +467,7 @@ fun ChannelCastScreen(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .clickable { onOpenUrl(detail.url, detail.title) }
+                        .clickable { onOpenUrl(detail.url, detail.title, detail.summary) }
                         .padding(vertical = 12.dp),
                 )
             }
