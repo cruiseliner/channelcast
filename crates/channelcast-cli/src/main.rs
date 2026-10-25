@@ -140,6 +140,17 @@ fn main() -> Result<()> {
                 println!("{}. {}", i + 1, a.title);
                 println!("   {} · {}", a.source, when);
                 println!("   {}", a.url);
+                if let Some(ref s) = a.summary {
+                    let one = s.replace('\n', " ");
+                    let show = if one.chars().count() > 220 {
+                        format!("{}…", one.chars().take(217).collect::<String>())
+                    } else {
+                        one
+                    };
+                    println!("   summary: {show}");
+                } else {
+                    println!("   summary: (none)");
+                }
             }
         }
     }

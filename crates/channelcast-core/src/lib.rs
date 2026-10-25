@@ -11,6 +11,7 @@ pub mod model;
 pub mod nws;
 pub mod rank;
 pub mod sanitize;
+pub mod excerpt;
 
 pub use cache::Cache;
 pub use config::{filter_by_keywords, Channel, ChannelConfig};
@@ -29,6 +30,7 @@ pub use model::Article;
 pub use nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
 pub use rank::dedupe_and_rank;
 pub use sanitize::{clean_summary, is_valid_article_url, sanitize_article, sanitize_articles, strip_tags};
+pub use excerpt::{enrich_thin_summaries, extract_excerpt_from_html, needs_excerpt, MIN_GOOD_EXCERPT};
 
 use std::path::Path;
 
@@ -43,7 +45,13 @@ pub fn headlines_for_channel(
     let raw = fetch_channel_feeds(&channel.feeds, &channel.id)?;
     let cleaned = sanitize_articles(raw);
     let filtered = filter_by_keywords(cleaned, &channel.keywords);
-    let ranked = dedupe_and_rank(filtered);
+    let mut ranked = dedupe_and_rank(filtered);
+
+    // Pull og:description / meta for thin feed blurbs (HN meta, bare sitemaps).
+    let enrich_n = ranked.len().min(limit.max(12));
+    if enrich_n > 0 {
+        excerpt::enrich_thin_summaries(&mut ranked[..enrich_n]);
+    }
 
     if let Some(path) = cache_path {
         let cache = Cache::open(path)?;

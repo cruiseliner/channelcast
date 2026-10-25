@@ -244,7 +244,8 @@ class ArticleActivity : ComponentActivity() {
         triedPrefetch = true
         val loadingTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "Article" }
         val earlySummary = intent.getStringExtra(EXTRA_SUMMARY).orEmpty().trim()
-        val hasUsableSummary = earlySummary.length >= 40
+        // HN "From host · N points" is not real prose — still try prefetch for those.
+        val hasUsableSummary = isProseSummary(earlySummary)
         // Always paint feed blurb (or title) immediately — never leave a blank WebView.
         webView?.loadDataWithBaseURL(
             url,
@@ -393,6 +394,23 @@ class ArticleActivity : ComponentActivity() {
         private const val DESKTOP_UA =
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) " +
                 "Chrome/120.0.0.0 Safari/537.36"
+
+        /** Real article prose (Fightful-style), not HN meta or tiny stubs. */
+        fun isProseSummary(summary: String): Boolean {
+            val s = summary.trim()
+            if (s.length < 60) return false
+            val lower = s.lowercase()
+            if (lower.contains("points on hacker news") ||
+                lower.contains("discussed on hacker news") ||
+                lower.contains("no summary in feed")
+            ) {
+                return false
+            }
+            if (lower.startsWith("from ") && lower.contains(" · ") && lower.contains("point")) {
+                return false
+            }
+            return true
+        }
 
         fun isHnCommentsUrl(url: String): Boolean {
             val lower = url.lowercase()
