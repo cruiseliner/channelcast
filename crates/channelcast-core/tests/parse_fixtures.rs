@@ -9,10 +9,17 @@ use channelcast_core::{
 fn parses_sample_rss() {
     let bytes = include_bytes!("fixtures/sample.rss");
     let articles = parse_feed_bytes(bytes, "https://example.com/rss", "tech").unwrap();
-    assert_eq!(articles.len(), 2);
+    assert_eq!(articles.len(), 3);
     assert_eq!(articles[0].title, "First Story");
     assert!(articles[0].url.contains("stories/1"));
     assert!(articles[0].published.is_some());
+    // First item had Article URL HTML soup + blurb — soup gone, prose kept.
+    let s0 = articles[0].summary.as_deref().unwrap_or("");
+    assert!(!s0.contains('<'), "summary must be plain text: {s0}");
+    assert!(!s0.to_ascii_lowercase().contains("article url"), "{s0}");
+    assert!(s0.contains("Real blurb"), "{s0}");
+    let s2 = articles[2].summary.as_deref().unwrap_or("");
+    assert_eq!(s2, "Plain prose after tags for wrestling fans.");
 }
 
 #[test]
@@ -62,8 +69,8 @@ fn cache_roundtrip() {
     let cache = Cache::open_memory().unwrap();
     cache.upsert_articles(&ranked).unwrap();
     let listed = cache.list_channel("tech", 10).unwrap();
-    assert_eq!(listed.len(), 2);
-    assert_eq!(listed[0].title, "Second Story");
+    assert_eq!(listed.len(), 3);
+    assert_eq!(listed[0].title, "HTML Summary Story"); // newest dated
 }
 
 #[test]

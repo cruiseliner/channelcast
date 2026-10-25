@@ -10,6 +10,7 @@ pub mod usatoday;
 pub mod model;
 pub mod nws;
 pub mod rank;
+pub mod sanitize;
 
 pub use cache::Cache;
 pub use config::{filter_by_keywords, Channel, ChannelConfig};
@@ -27,6 +28,7 @@ pub use usatoday::{
 pub use model::Article;
 pub use nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
 pub use rank::dedupe_and_rank;
+pub use sanitize::{clean_summary, is_valid_article_url, sanitize_article, sanitize_articles, strip_tags};
 
 use std::path::Path;
 
@@ -39,7 +41,8 @@ pub fn headlines_for_channel(
 ) -> Result<Vec<Article>> {
     let channel = config.get(channel_id)?;
     let raw = fetch_channel_feeds(&channel.feeds, &channel.id)?;
-    let filtered = filter_by_keywords(raw, &channel.keywords);
+    let cleaned = sanitize_articles(raw);
+    let filtered = filter_by_keywords(cleaned, &channel.keywords);
     let ranked = dedupe_and_rank(filtered);
 
     if let Some(path) = cache_path {

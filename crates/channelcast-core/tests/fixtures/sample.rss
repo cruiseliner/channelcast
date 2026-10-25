@@ -7,7 +7,7 @@
     <item>
       <title>First Story</title>
       <link>https://example.com/stories/1</link>
-      <description>Hello RSS</description>
+      <description><![CDATA[<p>Article URL:<a href="https:/broken">x</a></p><p>Real blurb about the story.</p>]]></description>
       <pubDate>Mon, 20 Oct 2026 12:00:00 GMT</pubDate>
       <guid>https://example.com/stories/1</guid>
     </item>
@@ -17,5 +17,12 @@
       <pubDate>Tue, 21 Oct 2026 15:30:00 GMT</pubDate>
       <guid>https://example.com/stories/2</guid>
     </item>
-  </channel>
+      <item>
+      <title>HTML Summary Story</title>
+      <link>https://example.com/stories/3</link>
+      <description><![CDATA[<p>Plain prose after tags for wrestling fans.</p>]]></description>
+      <pubDate>Wed, 22 Oct 2026 10:00:00 GMT</pubDate>
+      <guid>https://example.com/stories/3</guid>
+    </item>
+</channel>
 </rss>

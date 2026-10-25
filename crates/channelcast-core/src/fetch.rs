@@ -1,5 +1,6 @@
 use crate::error::{Error, Result};
 use crate::model::Article;
+use crate::sanitize::{normalize_article_url, sanitize_article};
 use crate::floridatoday::{fetch_floridatoday, is_floridatoday_url};
 use crate::usatoday::{fetch_usatoday, is_usatoday_url};
 use crate::nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
@@ -31,7 +32,42 @@ pub fn fetch_feed(url: &str, channel_id: &str) -> Result<Vec<Article>> {
     if is_nws_forecast_url(url) {
         return parse_nws_forecast_bytes(&bytes, url, channel_id);
     }
-    parse_feed_bytes(&bytes, url, channel_id)
+    let mut articles = parse_feed_bytes(&bytes, url, channel_id)?;
+    // Resolve Google News redirects to publisher URLs (WebView-friendly).
+    if url.to_ascii_lowercase().contains("news.google.com") {
+        for a in &mut articles {
+            a.url = unwrap_google_news_url(&client, &a.url);
+        }
+    }
+    Ok(articles)
+}
+
+
+/// Follow redirects for Google News article URLs so WebView/open get a publisher page.
+fn unwrap_google_news_url(client: &reqwest::blocking::Client, url: &str) -> String {
+    let lower = url.to_ascii_lowercase();
+    if !(lower.contains("news.google.com/rss/articles/")
+        || lower.contains("news.google.com/articles/"))
+    {
+        return url.to_string();
+    }
+    match client
+        .get(url)
+        .header("Accept", "text/html,application/xhtml+xml")
+        .send()
+    {
+        Ok(resp) => {
+            let final_url = resp.url().to_string();
+            if crate::sanitize::is_valid_article_url(&final_url)
+                && !final_url.to_ascii_lowercase().contains("news.google.com")
+            {
+                final_url
+            } else {
+                url.to_string()
+            }
+        }
+        Err(_) => url.to_string(),
+    }
 }
 
 /// Parse RSS/Atom bytes (also used by tests with fixtures).
@@ -62,6 +98,7 @@ pub fn parse_feed_bytes(bytes: &[u8], source_url: &str, channel_id: &str) -> Res
                     Some(id)
                 }
             })
+            .and_then(|u| normalize_article_url(&u))
             .unwrap_or_default();
         if url.is_empty() {
             continue;
@@ -72,14 +109,19 @@ pub fn parse_feed_bytes(bytes: &[u8], source_url: &str, channel_id: &str) -> Res
             .or_else(|| entry.content.and_then(|c| c.body));
         let published = entry.published.or(entry.updated);
 
-        out.push(Article {
+        let mut article = Article {
             title,
             url,
             summary,
             published,
             source: source_label.clone(),
             channel_id: channel_id.to_string(),
-        });
+        };
+        sanitize_article(&mut article);
+        if article.url.is_empty() {
+            continue;
+        }
+        out.push(article);
     }
     Ok(out)
 }

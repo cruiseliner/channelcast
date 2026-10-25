@@ -9,6 +9,8 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceError
+import android.widget.Toast
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -116,6 +118,7 @@ class ArticleActivity : ComponentActivity() {
                                     settings.apply {
                                         javaScriptEnabled = true
                                         domStorageEnabled = true
+                                        databaseEnabled = true
                                         loadsImagesAutomatically = true
                                         mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                                         // Prefer desktop-ish layout for news sites on TV.
@@ -123,6 +126,11 @@ class ArticleActivity : ComponentActivity() {
                                         loadWithOverviewMode = true
                                         builtInZoomControls = true
                                         displayZoomControls = false
+                                        // Many publishers block "WebView" UAs → webpage not available.
+                                        userAgentString =
+                                            "Mozilla/5.0 (Linux; Android 12; SHIELD Android TV) " +
+                                                "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                                                "Chrome/120.0.0.0 Mobile Safari/537.36"
                                     }
                                     webViewClient = object : WebViewClient() {
                                         override fun shouldOverrideUrlLoading(
@@ -131,6 +139,21 @@ class ArticleActivity : ComponentActivity() {
                                         ): Boolean {
                                             val next = request.url?.toString().orEmpty()
                                             return !(next.startsWith("https://") || next.startsWith("http://"))
+                                        }
+
+                                        override fun onReceivedError(
+                                            view: WebView?,
+                                            request: WebResourceRequest?,
+                                            error: WebResourceError?,
+                                        ) {
+                                            if (request?.isForMainFrame == true) {
+                                                val desc = error?.description?.toString().orEmpty()
+                                                Toast.makeText(
+                                                    this@ArticleActivity,
+                                                    "Could not load article" + if (desc.isNotBlank()) ": $desc" else "",
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                            }
                                         }
                                     }
                                     webChromeClient = object : WebChromeClient() {

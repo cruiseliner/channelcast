@@ -1,6 +1,8 @@
 package com.cruiseliner.channelcast
 
 import android.content.Intent
+import android.text.Html
+import android.os.Build
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
@@ -106,13 +108,15 @@ class MainActivity : ComponentActivity() {
      * Phone: Custom Tabs → ACTION_VIEW → WebView fallback.
      */
     private fun openArticle(url: String, title: String? = null) {
-        if (url.isBlank()) {
-            Toast.makeText(this, "No URL for this item", Toast.LENGTH_SHORT).show()
+        if (!isValidHttpUrl(url)) {
+            Toast.makeText(this, "No usable link for this story", Toast.LENGTH_SHORT).show()
+            Log.w(TAG, "Rejecting bad article URL: $url")
             return
         }
-        val uri = Uri.parse(url)
+        val uri = Uri.parse(url.trim())
         if (isTelevision()) {
-            openInWebView(url, title)
+            // Prefer in-app WebView on TV (no reliable browser on many TCL sets).
+            openInWebView(url.trim(), title)
             return
         }
         try {
@@ -125,12 +129,50 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent(Intent.ACTION_VIEW, uri))
         } catch (e: Exception) {
             Log.w(TAG, "No browser for $url — WebView", e)
-            openInWebView(url, title)
+            openInWebView(url.trim(), title)
         }
     }
 
     companion object {
         private const val TAG = "ChannelCast"
+    }
+}
+
+
+/** Safety net: core should already strip HTML; never show markup in the list/story pane. */
+fun plainTextSummary(raw: String?): String? {
+    if (raw.isNullOrBlank()) return null
+    val spanned = if (Build.VERSION.SDK_INT >= 24) {
+        Html.fromHtml(raw, Html.FROM_HTML_MODE_LEGACY)
+    } else {
+        @Suppress("DEPRECATION")
+        Html.fromHtml(raw)
+    }
+    val plain = spanned.toString().replace('\u00A0', ' ').trim().replace(Regex("\\s+"), " ")
+    if (plain.isEmpty()) return null
+    val lower = plain.lowercase()
+    if (lower.startsWith("article url:")) {
+        val rest = plain.substringAfter(':').trim()
+        val afterUrl = rest.split(Regex("\\s+"), limit = 2).getOrNull(1)?.trim().orEmpty()
+        return afterUrl.ifBlank { null }
+    }
+    if ('<' in plain || '>' in plain) {
+        return plain.replace(Regex("<[^>]*>"), "").trim().ifBlank { null }
+    }
+    return plain
+}
+
+fun isValidHttpUrl(url: String): Boolean {
+    val u = url.trim()
+    if (!(u.startsWith("https://") || u.startsWith("http://"))) return false
+    if ('<' in u || '>' in u || u.contains(' ')) return false
+    if (u == "https://" || u == "http://" || u.startsWith("https:/") && !u.startsWith("https://")) return false
+    if (u.startsWith("http:/") && !u.startsWith("http://")) return false
+    return try {
+        val uri = Uri.parse(u)
+        !uri.host.isNullOrBlank()
+    } catch (_: Exception) {
+        false
     }
 }
 
@@ -323,7 +365,7 @@ fun ChannelCastScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            h.summary?.takeIf { it.isNotBlank() }?.let { summary ->
+                            plainTextSummary(h.summary)?.let { summary ->
                                 Text(
                                     text = summary.take(280),
                                     style = MaterialTheme.typography.bodyMedium,
@@ -363,7 +405,7 @@ fun ChannelCastScreen(
                 )
                 HorizontalDivider()
                 Text(
-                    text = detail.summary?.takeIf { it.isNotBlank() }
+                    text = plainTextSummary(detail.summary)
                         ?: "No summary in feed — open the article for full text.",
                     style = MaterialTheme.typography.bodyLarge,
                 )
