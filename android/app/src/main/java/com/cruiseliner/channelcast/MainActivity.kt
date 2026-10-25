@@ -356,11 +356,6 @@ fun ChannelCastScreen(
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                             color = if (selected) Color(0xFFF2F5FA) else Color(0xFFC5CDD8),
                         )
-                        Text(
-                            text = ch.id,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                 }
             }
