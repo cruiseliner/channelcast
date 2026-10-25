@@ -1,5 +1,8 @@
-//! Fetch short prose excerpts for articles whose feed summary is missing or thin
-//! (e.g. Hacker News metadata-only descriptions).
+//! Fetch short prose excerpts for articles whose feed summary is missing or thin.
+//!
+//! Applies to every channel (Tech/HN, Top, Entertainment, Florida Today / Gannett
+//! sitemaps, Watchman, …) — not a Tech-only path. Pro Wrestling RSS blurbs are the
+//! quality bar; keep those when already long enough.
 //!
 //! Uses public HTML only: og:description → meta description → first paragraph.
 //! Short timeouts; never blocks the channel on a slow host.

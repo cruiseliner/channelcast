@@ -47,7 +47,8 @@ pub fn headlines_for_channel(
     let filtered = filter_by_keywords(cleaned, &channel.keywords);
     let mut ranked = dedupe_and_rank(filtered);
 
-    // Pull og:description / meta for thin feed blurbs (HN meta, bare sitemaps).
+    // Pull og:description / meta for thin/missing blurbs on ANY channel
+    // (HN meta, bare Gannett sitemaps, short RSS stubs). Pro Wrestling-quality prose is the bar.
     let enrich_n = ranked.len().min(limit.max(12));
     if enrich_n > 0 {
         excerpt::enrich_thin_summaries(&mut ranked[..enrich_n]);
