@@ -6,8 +6,15 @@ use crate::floridatoday::{fetch_floridatoday, is_floridatoday_url};
 use crate::usatoday::{fetch_usatoday, is_usatoday_url};
 use crate::nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
 use feed_rs::parser;
+use std::sync::Mutex;
+use std::time::Duration;
 
 const USER_AGENT: &str = "ChannelCast/0.1 (+https://github.com/cruiseliner/channelcast)";
+/// Per-feed HTTP timeout — keep tight so one dead host cannot stall a channel.
+const FEED_TIMEOUT: Duration = Duration::from_secs(12);
+/// Cap Google News redirect unwraps (each is an extra HTTP hop).
+const GNEWS_UNWRAP_MAX: usize = 10;
+const GNEWS_UNWRAP_TIMEOUT: Duration = Duration::from_secs(4);
 
 /// Fetch a feed URL over HTTP and parse RSS/Atom — or NWS forecast JSON — into articles.
 pub fn fetch_feed(url: &str, channel_id: &str) -> Result<Vec<Article>> {
@@ -21,7 +28,7 @@ pub fn fetch_feed(url: &str, channel_id: &str) -> Result<Vec<Article>> {
     }
     let client = reqwest::blocking::Client::builder()
         .user_agent(USER_AGENT)
-        .timeout(std::time::Duration::from_secs(30))
+        .timeout(FEED_TIMEOUT)
         .build()?;
     let mut req = client.get(url);
     if is_nws_forecast_url(url) {
@@ -36,14 +43,10 @@ pub fn fetch_feed(url: &str, channel_id: &str) -> Result<Vec<Article>> {
     let mut articles = parse_feed_bytes(&bytes, url, channel_id)?;
     // Resolve Google News redirects to publisher URLs (WebView-friendly).
     if url.to_ascii_lowercase().contains("news.google.com") {
-        for a in &mut articles {
-            a.url = unwrap_google_news_url(&client, &a.url);
-        }
+        unwrap_google_news_urls(&mut articles);
     }
     Ok(articles)
 }
-
-
 
 fn image_url_from_entry(entry: &feed_rs::model::Entry, summary_html: Option<&str>) -> Option<String> {
     for media in &entry.media {
@@ -109,6 +112,52 @@ fn image_url_from_entry(entry: &feed_rs::model::Entry, summary_html: Option<&str
 }
 
 /// Follow redirects for Google News article URLs so WebView/open get a publisher page.
+/// Parallel + capped — a full GNews feed can have dozens of articles and used to dominate Watchman latency.
+fn unwrap_google_news_urls(articles: &mut [Article]) {
+    let indices: Vec<usize> = articles
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| {
+            let lower = a.url.to_ascii_lowercase();
+            lower.contains("news.google.com/rss/articles/")
+                || lower.contains("news.google.com/articles/")
+        })
+        .map(|(i, _)| i)
+        .take(GNEWS_UNWRAP_MAX)
+        .collect();
+    if indices.is_empty() {
+        return;
+    }
+
+    let client = match reqwest::blocking::Client::builder()
+        .user_agent(USER_AGENT)
+        .timeout(GNEWS_UNWRAP_TIMEOUT)
+        .redirect(reqwest::redirect::Policy::limited(8))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+
+    let results: Mutex<Vec<(usize, String)>> = Mutex::new(Vec::new());
+    std::thread::scope(|scope| {
+        for &idx in &indices {
+            let url = articles[idx].url.clone();
+            let client = &client;
+            let results = &results;
+            scope.spawn(move || {
+                let resolved = unwrap_google_news_url(client, &url);
+                if resolved != url {
+                    results.lock().unwrap().push((idx, resolved));
+                }
+            });
+        }
+    });
+    for (idx, url) in results.into_inner().unwrap() {
+        articles[idx].url = url;
+    }
+}
+
 fn unwrap_google_news_url(client: &reqwest::blocking::Client, url: &str) -> String {
     let lower = url.to_ascii_lowercase();
     if !(lower.contains("news.google.com/rss/articles/")
@@ -197,19 +246,25 @@ pub fn parse_feed_bytes(bytes: &[u8], source_url: &str, channel_id: &str) -> Res
     Ok(out)
 }
 
-/// Fetch every feed for a channel and concatenate (no dedupe yet).
+/// Fetch every feed for a channel in parallel and concatenate (no dedupe yet).
 pub fn fetch_channel_feeds(feeds: &[String], channel_id: &str) -> Result<Vec<Article>> {
     if feeds.is_empty() {
         return Err(Error::StubChannel(channel_id.to_string()));
     }
-    let mut all = Vec::new();
-    let mut errors = Vec::new();
-    for feed_url in feeds {
-        match fetch_feed(feed_url, channel_id) {
-            Ok(mut items) => all.append(&mut items),
-            Err(e) => errors.push(format!("{feed_url}: {e}")),
+    let all = Mutex::new(Vec::new());
+    let errors = Mutex::new(Vec::new());
+    std::thread::scope(|scope| {
+        for feed_url in feeds {
+            let all = &all;
+            let errors = &errors;
+            scope.spawn(move || match fetch_feed(feed_url, channel_id) {
+                Ok(mut items) => all.lock().unwrap().append(&mut items),
+                Err(e) => errors.lock().unwrap().push(format!("{feed_url}: {e}")),
+            });
         }
-    }
+    });
+    let all = all.into_inner().unwrap();
+    let errors = errors.into_inner().unwrap();
     if all.is_empty() && !errors.is_empty() {
         return Err(Error::Feed(errors.join("; ")));
     }

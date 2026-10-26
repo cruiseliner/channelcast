@@ -19,6 +19,22 @@ feeds = [
   "https://www.usatoday.com/news-sitemap.xml#nation",
 ]
 
+# Weather / local keyed to ZIP 32920 (Cape Canaveral / Cocoa Beach, Brevard County, FL).
+# Geocode: 28.3903,-80.6043 → NWS office MLB grid 56,65; forecast zone FLZ747; county FLC009.
+# Points: https://api.weather.gov/points/28.3903,-80.6043 (HTTP 200, 2026-10-24)
+
+[[channels]]
+id = "weather"
+name = "Weather"
+description = "Live NWS MLB dashboard for ZIP 32920 (Cape Canaveral): Now/hourly/3-day + active graphicast hazards; NHC tropical when Atlantic-relevant. Phone/TV use fetch_weather(); feeds below are CLI/fallback only."
+enabled = true
+personal = true
+feeds = [
+  # Active alerts (Atom) — dated; Android Weather tab uses the live dashboard instead
+  "https://api.weather.gov/alerts/active.atom?zone=FLZ747",
+]
+# Dashboard (Android): api.weather.gov grid MLB/56,65 forecast + hourly, stations/obs,
+# graphicast https://www.weather.gov/source/mlb/graphicast/graphicast.xml, NHC CurrentStorms.json
 [[channels]]
 id = "local"
 name = "Local"
@@ -129,7 +145,7 @@ feeds = [
 [[channels]]
 id = "watchman"
 name = "Watchman"
-description = "Personal End Times / Israel geopolitics aggregator. Allowlisted news RSS + keyword filter only — not LLM prophecy. Public repo ≠ endorsement."
+description = "Personal End Times / Israel geopolitics aggregator. Allowlisted news RSS + keyword filter only — not LLM prophecy. Dated items older than ~7 days are dropped (no stale padding). Public repo ≠ endorsement."
 enabled = true
 personal = true
 feeds = [
@@ -173,20 +189,3 @@ keywords = [
   "messiah candidate",
   "jesus, son of david",
 ]
-
-# Weather / local keyed to ZIP 32920 (Cape Canaveral / Cocoa Beach, Brevard County, FL).
-# Geocode: 28.3903,-80.6043 → NWS office MLB grid 56,65; forecast zone FLZ747; county FLC009.
-# Points: https://api.weather.gov/points/28.3903,-80.6043 (HTTP 200, 2026-10-24)
-
-[[channels]]
-id = "weather"
-name = "Weather"
-description = "Live NWS MLB dashboard for ZIP 32920 (Cape Canaveral): Now/hourly/3-day + active graphicast hazards; NHC tropical when Atlantic-relevant. Phone/TV use fetch_weather(); feeds below are CLI/fallback only."
-enabled = true
-personal = true
-feeds = [
-  # Active alerts (Atom) — dated; Android Weather tab uses the live dashboard instead
-  "https://api.weather.gov/alerts/active.atom?zone=FLZ747",
-]
-# Dashboard (Android): api.weather.gov grid MLB/56,65 forecast + hourly, stations/obs,
-# graphicast https://www.weather.gov/source/mlb/graphicast/graphicast.xml, NHC CurrentStorms.json

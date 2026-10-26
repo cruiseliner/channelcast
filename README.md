@@ -1,5 +1,12 @@
 # ChannelCast
 
+## What's new in v0.1.21 (Android)
+
+- **Channel order:** Top → **Weather** → Local → Space Coast → Markets → Tech → Entertainment → Pro Wrestling → Watchman (Weather moved from last to 2nd).
+- **Watchman freshness:** dated stories older than ~7 days are dropped — never pad the tab with stale items.
+- **Orientation:** MainActivity handles `configChanges`; tab content lives in a process-scoped 10-minute `TabCacheStore` so rotate does not refetch.
+- **Faster loads:** parallel feed fetches, 12s feed timeout, capped parallel Google News unwraps, tighter excerpt enrich budget (esp. Watchman).
+
 ## What's new in v0.1.20 (Android)
 
 - **MLB graphicast crop:** cover-crop (Fit B) now anchors **left** (`Alignment.CenterStart`) so titles like "Coastal Hazards Outlook" / "Dangerous Boating Conditions" keep their leading letters (center-crop was clipping them).
@@ -15,7 +22,7 @@
 ## What's new in v0.1.18 (Android)
 
 - **Phone chrome:** removed redundant "ChannelCast" title bar, section name / story-count / photos status line, and large empty gap / bottom blank bar — chips + stories fill the screen (still dark Material 3 hero/photo cards).
-- **Default channel order** (phone + TV + CLI/desktop via `channels.toml`): Top → Local → Space Coast → Markets → Tech → Entertainment → Pro Wrestling → Watchman (Weather left last for a separate revamp).
+- **Default channel order** (phone + TV + CLI/desktop via `channels.toml`): Top → Weather → Local → Space Coast → Markets → Tech → Entertainment → Pro Wrestling → Watchman.
 - Release: [v0.1.18-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.18-android)
 
 ## What's new in v0.1.17 (Android)

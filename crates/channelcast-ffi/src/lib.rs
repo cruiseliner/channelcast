@@ -231,6 +231,7 @@ mod tests {
         let ids: Vec<&str> = chans.iter().map(|c| c.id.as_str()).collect();
         let expected = [
             "top",
+            "weather",
             "local",
             "spacecoast",
             "markets",
@@ -238,7 +239,6 @@ mod tests {
             "entertainment",
             "prowrestling",
             "watchman",
-            "weather",
         ];
         assert_eq!(ids, expected, "channels.toml order drives phone+TV strip");
     }
@@ -253,10 +253,11 @@ mod tests {
 
     #[test]
     fn fetch_watchman_smoke() {
-        let items = fetch_headlines("watchman".into(), 5).expect("fetch");
-        assert!(!items.is_empty(), "expected watchman headlines");
-        for h in items.iter().take(5) {
-            println!("WATCHMAN: {} | {}", h.source, h.title);
+        let items = fetch_headlines("watchman".into(), 20).expect("fetch");
+        // May be empty if no keyword hits in the last 7 days — that is OK (no stale padding).
+        println!("WATCHMAN count={}", items.len());
+        for h in &items {
+            println!("WATCHMAN: {} | {} | {:?}", h.source, h.title, h.published);
             assert!(!h.title.is_empty());
             assert!(!h.url.is_empty());
         }

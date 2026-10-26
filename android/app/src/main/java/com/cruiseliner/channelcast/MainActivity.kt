@@ -43,7 +43,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -276,8 +275,7 @@ fun ChannelCastScreen(
     var weatherError by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf("Loading channels…") }
     var refreshTick by remember { mutableStateOf(0) }
-    val headlinesCache = remember { mutableStateMapOf<String, TimedCache<List<FfiHeadline>>>() }
-    var weatherCache by remember { mutableStateOf<TimedCache<FfiWeatherDashboard>?>(null) }
+    // Process-scoped keep-alive (survives orientation / Activity recreate).
     var lastHandledRefreshTick by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
@@ -313,7 +311,7 @@ fun ChannelCastScreen(
 
         if (id == "weather") {
             headlines = emptyList()
-            val hit = weatherCache
+            val hit = TabCacheStore.weather()
             if (!forceRefresh && hit != null && hit.isFresh()) {
                 weather = hit.value
                 loading = false
@@ -327,7 +325,7 @@ fun ChannelCastScreen(
             try {
                 val dash = withContext(Dispatchers.IO) { fetchWeather() }
                 weather = dash
-                weatherCache = TimedCache(dash)
+                TabCacheStore.putWeather(dash)
                 status = "Weather · ${dash.now.temperatureF}° ${dash.now.condition}"
                 Log.i("ChannelCast", "fetchWeather -> ${dash.now.temperatureF}F graphics=${dash.graphics.size}")
             } catch (e: ChannelCastFfiException) {
@@ -344,7 +342,7 @@ fun ChannelCastScreen(
             return@LaunchedEffect
         }
 
-        val hit = headlinesCache[id]
+        val hit = TabCacheStore.headlines(id)
         if (!forceRefresh && hit != null && hit.isFresh()) {
             headlines = hit.value
             loading = false
@@ -360,7 +358,7 @@ fun ChannelCastScreen(
                 fetchHeadlines(id, 40u)
             }
             headlines = items
-            headlinesCache[id] = TimedCache(items)
+            TabCacheStore.putHeadlines(id, items)
             status = "$id · ${items.size} headlines"
             Log.i("ChannelCast", "fetchHeadlines($id) -> ${items.size}")
             items.take(3).forEach {

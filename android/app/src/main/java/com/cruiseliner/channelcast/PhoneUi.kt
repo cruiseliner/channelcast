@@ -36,7 +36,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -85,9 +84,7 @@ fun PhoneChannelCastScreen(
     var weather by remember { mutableStateOf<FfiWeatherDashboard?>(null) }
     var weatherError by remember { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableStateOf(0) }
-    // Keep-alive caches: tab switches reuse fresh content; pull-to-refresh forces fetch.
-    val headlinesCache = remember { mutableStateMapOf<String, TimedCache<List<FfiHeadline>>>() }
-    var weatherCache by remember { mutableStateOf<TimedCache<FfiWeatherDashboard>?>(null) }
+    // Process-scoped keep-alive (survives orientation); pull-to-refresh forces fetch.
     var lastHandledRefreshTick by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
@@ -117,7 +114,7 @@ fun PhoneChannelCastScreen(
 
         if (id == "weather") {
             headlines = emptyList()
-            val hit = weatherCache
+            val hit = TabCacheStore.weather()
             if (!forceRefresh && hit != null && hit.isFresh()) {
                 weather = hit.value
                 loading = false
@@ -131,7 +128,7 @@ fun PhoneChannelCastScreen(
             try {
                 val dash = withContext(Dispatchers.IO) { fetchWeather() }
                 weather = dash
-                weatherCache = TimedCache(dash)
+                TabCacheStore.putWeather(dash)
                 Log.i(
                     "ChannelCast",
                     "phone fetchWeather -> ${dash.now.temperatureF}F hourly=${dash.hourly.size} graphics=${dash.graphics.size} tropical=${dash.tropical.size}",
@@ -151,7 +148,7 @@ fun PhoneChannelCastScreen(
             return@LaunchedEffect
         }
 
-        val hit = headlinesCache[id]
+        val hit = TabCacheStore.headlines(id)
         if (!forceRefresh && hit != null && hit.isFresh()) {
             headlines = hit.value
             loading = false
@@ -164,7 +161,7 @@ fun PhoneChannelCastScreen(
         try {
             val items = withContext(Dispatchers.IO) { fetchHeadlines(id, 40u) }
             headlines = items
-            headlinesCache[id] = TimedCache(items)
+            TabCacheStore.putHeadlines(id, items)
             val withImg = items.count { !it.imageUrl.isNullOrBlank() }
             Log.i("ChannelCast", "phone fetchHeadlines($id) -> ${items.size} (images=$withImg)")
         } catch (e: ChannelCastFfiException) {

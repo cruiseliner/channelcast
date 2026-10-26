@@ -18,9 +18,9 @@ const USER_AGENT: &str =
 /// Prefer excerpts at least this long (Fightful-style blurbs).
 pub const MIN_GOOD_EXCERPT: usize = 80;
 
-const FETCH_TIMEOUT: Duration = Duration::from_secs(5);
-const MAX_FETCHES: usize = 18;
-const PAUSE_BETWEEN: Duration = Duration::from_millis(80);
+const FETCH_TIMEOUT: Duration = Duration::from_secs(3);
+const MAX_FETCHES: usize = 8;
+const PAUSE_BETWEEN: Duration = Duration::from_millis(40);
 
 /// True when the list/reader should try to replace this summary with page prose.
 pub fn needs_excerpt(article: &Article) -> bool {

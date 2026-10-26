@@ -1,5 +1,21 @@
+
 use crate::model::Article;
+use chrono::{Duration, Utc};
 use std::collections::HashMap;
+
+/// Drop articles whose `published` is older than `max_age`.
+/// Undated items are kept (cannot prove stale); never invent filler from known-old stories.
+pub fn filter_max_age(articles: Vec<Article>, max_age: Duration) -> Vec<Article> {
+    let cutoff = Utc::now() - max_age;
+    articles
+        .into_iter()
+        .filter(|a| match a.published {
+            Some(p) => p >= cutoff,
+            None => true,
+        })
+        .collect()
+}
+
 
 /// Dedupe by canonical URL, prefer the copy with the richer summary, then sort newest-first.
 /// Articles without a published time sort after dated ones.
@@ -53,7 +69,7 @@ fn normalize_url(url: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{TimeZone, Utc};
+    use chrono::{Duration, TimeZone, Utc};
 
     fn art(url: &str, title: &str, secs: Option<i64>) -> Article {
         Article {
@@ -97,4 +113,21 @@ mod tests {
         assert!(ranked[0].summary.as_deref().unwrap().contains("longer listing"));
         assert_eq!(ranked[0].published.unwrap().timestamp(), 100);
     }
+
+    #[test]
+    fn filter_max_age_drops_old_keeps_undated() {
+        let now = Utc::now().timestamp();
+        let kept = filter_max_age(
+            vec![
+                art("https://ex.com/new", "new", Some(now)),
+                art("https://ex.com/old", "old", Some(now - 10 * 24 * 3600)),
+                art("https://ex.com/u", "undated", None),
+            ],
+            Duration::days(7),
+        );
+        assert_eq!(kept.len(), 2);
+        assert_eq!(kept[0].title, "new");
+        assert_eq!(kept[1].title, "undated");
+    }
+
 }

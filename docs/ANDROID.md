@@ -2,7 +2,7 @@
 
 **Phone APK** (Samsung S25 Ultra) and **Android TV leanback APK** that a custom TV launcher can open (same idea as Guide → TiviMate).
 
-**Status (v0.1.20):** UniFFI bridge live. Default channel is **top**. Phone: dark Material 3 hero/photo cards (Coil), chips (no title/section chrome), pull-to-refresh, Custom Tabs. **Weather tab:** live NWS MLB Now/hourly/3-day + left-anchored cover-crop graphicast hazards; NHC tropical only when relevant. Tabs keep a 10-minute in-memory cache (pull-to-refresh forces fetch). Channel order: Top→Local→Space Coast→Markets→Tech→Entertainment→Pro Wrestling→Watchman→Weather. Story images via MediaRSS/og:image. TV: leanback focus UI + same weather dashboard + in-app WebView.
+**Status (v0.1.21):** UniFFI bridge live. Default channel is **top**. Phone: dark Material 3 hero/photo cards (Coil), chips (no title/section chrome), pull-to-refresh, Custom Tabs. **Weather tab:** live NWS MLB Now/hourly/3-day + left-anchored cover-crop graphicast hazards; NHC tropical only when relevant. Tabs keep a **process-scoped** 10-minute cache (survives orientation; pull-to-refresh forces fetch). Channel order: Top→Weather→Local→Space Coast→Markets→Tech→Entertainment→Pro Wrestling→Watchman. Watchman drops dated stories older than ~7 days. Story images via MediaRSS/og:image. TV: leanback focus UI + same weather dashboard + in-app WebView.
 
 ## Layout
 

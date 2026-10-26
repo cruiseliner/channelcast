@@ -31,12 +31,16 @@ pub use usatoday::{
 pub use model::Article;
 pub use nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
 pub use weather::{fetch_weather_dashboard, WeatherDashboard, WeatherDay, WeatherGraphic, WeatherHour, WeatherNow, WeatherTropical};
-pub use rank::dedupe_and_rank;
+pub use rank::{dedupe_and_rank, filter_max_age};
 pub use sanitize::{clean_summary, is_valid_article_url, sanitize_article, sanitize_articles, strip_tags};
 pub use excerpt::{enrich_thin_summaries, extract_excerpt_from_html, needs_excerpt, MIN_GOOD_EXCERPT};
 pub use image::{extract_image_from_html, first_img_src, is_plausible_image_url};
 
+use chrono::Duration;
 use std::path::Path;
+
+/// Watchman: drop dated stories older than this — never pad the tab with stale items.
+const WATCHMAN_MAX_AGE: Duration = Duration::days(7);
 
 /// Load config, fetch a channel's feeds, dedupe/rank, optional keyword filter, optional cache.
 pub fn headlines_for_channel(
@@ -51,9 +55,15 @@ pub fn headlines_for_channel(
     let filtered = filter_by_keywords(cleaned, &channel.keywords);
     let mut ranked = dedupe_and_rank(filtered);
 
+    // Watchman: never pad with week-old+ stories just to fill the list.
+    if channel_id == "watchman" {
+        ranked = filter_max_age(ranked, WATCHMAN_MAX_AGE);
+    }
+
     // Pull og:description / meta for thin blurbs AND og:image when MediaRSS was empty.
     // Applies to every channel (Top included). Pro Wrestling-quality prose is the blurb bar.
-    let enrich_n = ranked.len().min(limit.max(12));
+    // Budget is small so phone tabs stay snappy (Watchman especially).
+    let enrich_n = ranked.len().min(limit.max(8).min(12));
     if enrich_n > 0 {
         excerpt::enrich_thin_summaries(&mut ranked[..enrich_n]);
     }
