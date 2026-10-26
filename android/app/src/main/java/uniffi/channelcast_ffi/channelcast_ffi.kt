@@ -715,6 +715,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -731,6 +733,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
     fun uniffi_channelcast_ffi_checksum_func_fetch_headlines(
+): Short
+fun uniffi_channelcast_ffi_checksum_func_fetch_weather(
 ): Short
 fun uniffi_channelcast_ffi_checksum_func_list_channels(
 ): Short
@@ -780,6 +784,8 @@ internal interface UniffiLib : Library {
 
     // FFI functions
     fun uniffi_channelcast_ffi_fn_func_fetch_headlines(`channelId`: RustBuffer.ByValue,`limit`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_channelcast_ffi_fn_func_fetch_weather(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_channelcast_ffi_fn_func_list_channels(`includeDisabled`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -912,6 +918,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_channelcast_ffi_checksum_func_fetch_headlines() != 950.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_channelcast_ffi_checksum_func_fetch_weather() != 60314.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_channelcast_ffi_checksum_func_list_channels() != 22632.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1014,6 +1023,29 @@ public object FfiConverterUInt: FfiConverter<UInt, Int> {
 
     override fun write(value: UInt, buf: ByteBuffer) {
         buf.putInt(value.toInt())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterInt: FfiConverter<Int, Int> {
+    override fun lift(value: Int): Int {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Int {
+        return buf.getInt()
+    }
+
+    override fun lower(value: Int): Int {
+        return value
+    }
+
+    override fun allocationSize(value: Int) = 4UL
+
+    override fun write(value: Int, buf: ByteBuffer) {
+        buf.putInt(value)
     }
 }
 
@@ -1207,6 +1239,303 @@ public object FfiConverterTypeFfiHeadline: FfiConverterRustBuffer<FfiHeadline> {
 
 
 
+/**
+ * Full Weather tab payload (B2: Now → hourly → 3-day → graphics → optional tropical).
+ */
+data class FfiWeatherDashboard (
+    var `now`: FfiWeatherNow, 
+    var `hourly`: List<FfiWeatherHour>, 
+    var `daily`: List<FfiWeatherDay>, 
+    var `graphics`: List<FfiWeatherGraphic>, 
+    /**
+     * Zero or one entry — empty when no tropical interest.
+     */
+    var `tropical`: List<FfiWeatherTropical>, 
+    var `alertLabels`: List<kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWeatherDashboard: FfiConverterRustBuffer<FfiWeatherDashboard> {
+    override fun read(buf: ByteBuffer): FfiWeatherDashboard {
+        return FfiWeatherDashboard(
+            FfiConverterTypeFfiWeatherNow.read(buf),
+            FfiConverterSequenceTypeFfiWeatherHour.read(buf),
+            FfiConverterSequenceTypeFfiWeatherDay.read(buf),
+            FfiConverterSequenceTypeFfiWeatherGraphic.read(buf),
+            FfiConverterSequenceTypeFfiWeatherTropical.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiWeatherDashboard) = (
+            FfiConverterTypeFfiWeatherNow.allocationSize(value.`now`) +
+            FfiConverterSequenceTypeFfiWeatherHour.allocationSize(value.`hourly`) +
+            FfiConverterSequenceTypeFfiWeatherDay.allocationSize(value.`daily`) +
+            FfiConverterSequenceTypeFfiWeatherGraphic.allocationSize(value.`graphics`) +
+            FfiConverterSequenceTypeFfiWeatherTropical.allocationSize(value.`tropical`) +
+            FfiConverterSequenceString.allocationSize(value.`alertLabels`)
+    )
+
+    override fun write(value: FfiWeatherDashboard, buf: ByteBuffer) {
+            FfiConverterTypeFfiWeatherNow.write(value.`now`, buf)
+            FfiConverterSequenceTypeFfiWeatherHour.write(value.`hourly`, buf)
+            FfiConverterSequenceTypeFfiWeatherDay.write(value.`daily`, buf)
+            FfiConverterSequenceTypeFfiWeatherGraphic.write(value.`graphics`, buf)
+            FfiConverterSequenceTypeFfiWeatherTropical.write(value.`tropical`, buf)
+            FfiConverterSequenceString.write(value.`alertLabels`, buf)
+    }
+}
+
+
+
+/**
+ * One day in the 3-day outlook.
+ */
+data class FfiWeatherDay (
+    var `name`: kotlin.String, 
+    var `highF`: kotlin.Int, 
+    var `lowF`: kotlin.Int, 
+    var `condition`: kotlin.String, 
+    var `iconUrl`: kotlin.String?, 
+    var `precipPct`: kotlin.Int?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWeatherDay: FfiConverterRustBuffer<FfiWeatherDay> {
+    override fun read(buf: ByteBuffer): FfiWeatherDay {
+        return FfiWeatherDay(
+            FfiConverterString.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiWeatherDay) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterInt.allocationSize(value.`highF`) +
+            FfiConverterInt.allocationSize(value.`lowF`) +
+            FfiConverterString.allocationSize(value.`condition`) +
+            FfiConverterOptionalString.allocationSize(value.`iconUrl`) +
+            FfiConverterOptionalInt.allocationSize(value.`precipPct`)
+    )
+
+    override fun write(value: FfiWeatherDay, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterInt.write(value.`highF`, buf)
+            FfiConverterInt.write(value.`lowF`, buf)
+            FfiConverterString.write(value.`condition`, buf)
+            FfiConverterOptionalString.write(value.`iconUrl`, buf)
+            FfiConverterOptionalInt.write(value.`precipPct`, buf)
+    }
+}
+
+
+
+/**
+ * Official MLB graphicast hazard image (Cover-crop in UI).
+ */
+data class FfiWeatherGraphic (
+    var `title`: kotlin.String, 
+    var `description`: kotlin.String, 
+    var `imageUrl`: kotlin.String, 
+    var `linkUrl`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWeatherGraphic: FfiConverterRustBuffer<FfiWeatherGraphic> {
+    override fun read(buf: ByteBuffer): FfiWeatherGraphic {
+        return FfiWeatherGraphic(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiWeatherGraphic) = (
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterString.allocationSize(value.`imageUrl`) +
+            FfiConverterString.allocationSize(value.`linkUrl`)
+    )
+
+    override fun write(value: FfiWeatherGraphic, buf: ByteBuffer) {
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterString.write(value.`imageUrl`, buf)
+            FfiConverterString.write(value.`linkUrl`, buf)
+    }
+}
+
+
+
+/**
+ * Hourly strip cell.
+ */
+data class FfiWeatherHour (
+    var `label`: kotlin.String, 
+    var `temperatureF`: kotlin.Int, 
+    var `condition`: kotlin.String, 
+    var `iconUrl`: kotlin.String?, 
+    var `precipPct`: kotlin.Int?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWeatherHour: FfiConverterRustBuffer<FfiWeatherHour> {
+    override fun read(buf: ByteBuffer): FfiWeatherHour {
+        return FfiWeatherHour(
+            FfiConverterString.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiWeatherHour) = (
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterInt.allocationSize(value.`temperatureF`) +
+            FfiConverterString.allocationSize(value.`condition`) +
+            FfiConverterOptionalString.allocationSize(value.`iconUrl`) +
+            FfiConverterOptionalInt.allocationSize(value.`precipPct`)
+    )
+
+    override fun write(value: FfiWeatherHour, buf: ByteBuffer) {
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterInt.write(value.`temperatureF`, buf)
+            FfiConverterString.write(value.`condition`, buf)
+            FfiConverterOptionalString.write(value.`iconUrl`, buf)
+            FfiConverterOptionalInt.write(value.`precipPct`, buf)
+    }
+}
+
+
+
+/**
+ * Current conditions (Weather tab "Now").
+ */
+data class FfiWeatherNow (
+    var `location`: kotlin.String, 
+    var `temperatureF`: kotlin.Int, 
+    var `condition`: kotlin.String, 
+    var `wind`: kotlin.String, 
+    var `humidityPct`: kotlin.Int?, 
+    var `iconUrl`: kotlin.String?, 
+    var `observedAt`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWeatherNow: FfiConverterRustBuffer<FfiWeatherNow> {
+    override fun read(buf: ByteBuffer): FfiWeatherNow {
+        return FfiWeatherNow(
+            FfiConverterString.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiWeatherNow) = (
+            FfiConverterString.allocationSize(value.`location`) +
+            FfiConverterInt.allocationSize(value.`temperatureF`) +
+            FfiConverterString.allocationSize(value.`condition`) +
+            FfiConverterString.allocationSize(value.`wind`) +
+            FfiConverterOptionalInt.allocationSize(value.`humidityPct`) +
+            FfiConverterOptionalString.allocationSize(value.`iconUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`observedAt`)
+    )
+
+    override fun write(value: FfiWeatherNow, buf: ByteBuffer) {
+            FfiConverterString.write(value.`location`, buf)
+            FfiConverterInt.write(value.`temperatureF`, buf)
+            FfiConverterString.write(value.`condition`, buf)
+            FfiConverterString.write(value.`wind`, buf)
+            FfiConverterOptionalInt.write(value.`humidityPct`, buf)
+            FfiConverterOptionalString.write(value.`iconUrl`, buf)
+            FfiConverterOptionalString.write(value.`observedAt`, buf)
+    }
+}
+
+
+
+/**
+ * Tropical card — only present when Atlantic/Caribbean/Florida interest exists.
+ */
+data class FfiWeatherTropical (
+    var `title`: kotlin.String, 
+    var `summary`: kotlin.String, 
+    var `imageUrl`: kotlin.String, 
+    var `articleUrl`: kotlin.String, 
+    var `articleTitle`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWeatherTropical: FfiConverterRustBuffer<FfiWeatherTropical> {
+    override fun read(buf: ByteBuffer): FfiWeatherTropical {
+        return FfiWeatherTropical(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiWeatherTropical) = (
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`summary`) +
+            FfiConverterString.allocationSize(value.`imageUrl`) +
+            FfiConverterString.allocationSize(value.`articleUrl`) +
+            FfiConverterString.allocationSize(value.`articleTitle`)
+    )
+
+    override fun write(value: FfiWeatherTropical, buf: ByteBuffer) {
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`summary`, buf)
+            FfiConverterString.write(value.`imageUrl`, buf)
+            FfiConverterString.write(value.`articleUrl`, buf)
+            FfiConverterString.write(value.`articleTitle`, buf)
+    }
+}
+
+
+
 
 
 /**
@@ -1273,6 +1602,38 @@ public object FfiConverterTypeChannelCastFfiError : FfiConverterRustBuffer<Chann
 /**
  * @suppress
  */
+public object FfiConverterOptionalInt: FfiConverterRustBuffer<kotlin.Int?> {
+    override fun read(buf: ByteBuffer): kotlin.Int? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterInt.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Int?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterInt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Int?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterInt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -1295,6 +1656,34 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
         }
     }
 }
@@ -1354,6 +1743,118 @@ public object FfiConverterSequenceTypeFfiHeadline: FfiConverterRustBuffer<List<F
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiWeatherDay: FfiConverterRustBuffer<List<FfiWeatherDay>> {
+    override fun read(buf: ByteBuffer): List<FfiWeatherDay> {
+        val len = buf.getInt()
+        return List<FfiWeatherDay>(len) {
+            FfiConverterTypeFfiWeatherDay.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiWeatherDay>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiWeatherDay.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiWeatherDay>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiWeatherDay.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiWeatherGraphic: FfiConverterRustBuffer<List<FfiWeatherGraphic>> {
+    override fun read(buf: ByteBuffer): List<FfiWeatherGraphic> {
+        val len = buf.getInt()
+        return List<FfiWeatherGraphic>(len) {
+            FfiConverterTypeFfiWeatherGraphic.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiWeatherGraphic>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiWeatherGraphic.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiWeatherGraphic>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiWeatherGraphic.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiWeatherHour: FfiConverterRustBuffer<List<FfiWeatherHour>> {
+    override fun read(buf: ByteBuffer): List<FfiWeatherHour> {
+        val len = buf.getInt()
+        return List<FfiWeatherHour>(len) {
+            FfiConverterTypeFfiWeatherHour.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiWeatherHour>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiWeatherHour.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiWeatherHour>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiWeatherHour.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiWeatherTropical: FfiConverterRustBuffer<List<FfiWeatherTropical>> {
+    override fun read(buf: ByteBuffer): List<FfiWeatherTropical> {
+        val len = buf.getInt()
+        return List<FfiWeatherTropical>(len) {
+            FfiConverterTypeFfiWeatherTropical.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiWeatherTropical>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiWeatherTropical.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiWeatherTropical>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiWeatherTropical.write(it, buf)
+        }
+    }
+}
         /**
          * Fetch, filter, and rank headlines for `channel_id`.
          *
@@ -1365,6 +1866,19 @@ public object FfiConverterSequenceTypeFfiHeadline: FfiConverterRustBuffer<List<F
     uniffiRustCallWithError(ChannelCastFfiException) { _status ->
     UniffiLib.INSTANCE.uniffi_channelcast_ffi_fn_func_fetch_headlines(
         FfiConverterString.lower(`channelId`),FfiConverterUInt.lower(`limit`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Live Weather dashboard for home ZIP 32920 / NWS MLB (B2 tab content).
+         */
+    @Throws(ChannelCastFfiException::class) fun `fetchWeather`(): FfiWeatherDashboard {
+            return FfiConverterTypeFfiWeatherDashboard.lift(
+    uniffiRustCallWithError(ChannelCastFfiException) { _status ->
+    UniffiLib.INSTANCE.uniffi_channelcast_ffi_fn_func_fetch_weather(
+        _status)
 }
     )
     }

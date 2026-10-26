@@ -181,14 +181,12 @@ keywords = [
 [[channels]]
 id = "weather"
 name = "Weather"
-description = "NWS forecast + alerts for ZIP 32920 (Cape Canaveral / Cocoa Beach FL). Forecast is NWS JSON (core nws module); alerts are Atom."
+description = "Live NWS MLB dashboard for ZIP 32920 (Cape Canaveral): Now/hourly/3-day + active graphicast hazards; NHC tropical when Atlantic-relevant. Phone/TV use fetch_weather(); feeds below are CLI/fallback only."
 enabled = true
 personal = true
 feeds = [
-  # Active alerts first (Atom — feed-rs); dated so they rank above forecast periods
+  # Active alerts (Atom) — dated; Android Weather tab uses the live dashboard instead
   "https://api.weather.gov/alerts/active.atom?zone=FLZ747",
-  # 7-day forecast JSON → Article per period (ChannelCast nws parser)
-  "https://api.weather.gov/gridpoints/MLB/56,65/forecast",
 ]
-# Also useful: hourly https://api.weather.gov/gridpoints/MLB/56,65/forecast/hourly
-# Point alerts: https://api.weather.gov/alerts/active.atom?point=28.3903,-80.6043
+# Dashboard (Android): api.weather.gov grid MLB/56,65 forecast + hourly, stations/obs,
+# graphicast https://www.weather.gov/source/mlb/graphicast/graphicast.xml, NHC CurrentStorms.json

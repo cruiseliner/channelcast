@@ -38,10 +38,11 @@ fn defaults_config_loads() {
     let weather = cfg.get("weather").unwrap();
     assert!(!weather.feeds.is_empty());
     assert!(weather.personal);
+    // Live dashboard is fetch_weather_dashboard(); feeds keep alerts Atom for CLI/fallback.
     assert!(weather
         .feeds
         .iter()
-        .any(|u| u.contains("api.weather.gov/gridpoints/MLB/56,65/forecast")));
+        .any(|u| u.contains("api.weather.gov/alerts/active")));
     let local = cfg.get("local").unwrap();
     assert!(!local.feeds.is_empty());
     assert!(local.personal);

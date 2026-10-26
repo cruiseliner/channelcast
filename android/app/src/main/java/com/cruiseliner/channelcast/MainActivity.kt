@@ -58,7 +58,9 @@ import kotlinx.coroutines.withContext
 import uniffi.channelcast_ffi.ChannelCastFfiException
 import uniffi.channelcast_ffi.FfiChannel
 import uniffi.channelcast_ffi.FfiHeadline
+import uniffi.channelcast_ffi.FfiWeatherDashboard
 import uniffi.channelcast_ffi.fetchHeadlines
+import uniffi.channelcast_ffi.fetchWeather
 import uniffi.channelcast_ffi.listChannels
 
 /**
@@ -269,6 +271,8 @@ fun ChannelCastScreen(
     var selectedHeadline by remember { mutableStateOf<FfiHeadline?>(null) }
     var loading by remember { mutableStateOf(false) }
     var headlinesError by remember { mutableStateOf<String?>(null) }
+    var weather by remember { mutableStateOf<FfiWeatherDashboard?>(null) }
+    var weatherError by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf("Loading channels…") }
     var refreshTick by remember { mutableStateOf(0) }
 
@@ -299,9 +303,33 @@ fun ChannelCastScreen(
         val id = selectedId ?: return@LaunchedEffect
         loading = true
         headlinesError = null
-        headlines = emptyList()
+        weatherError = null
         selectedHeadline = null
         status = "Fetching $id…"
+        if (id == "weather") {
+            headlines = emptyList()
+            try {
+                val dash = withContext(Dispatchers.IO) { fetchWeather() }
+                weather = dash
+                status = "Weather · ${dash.now.temperatureF}° ${dash.now.condition}"
+                Log.i("ChannelCast", "fetchWeather -> ${dash.now.temperatureF}F graphics=${dash.graphics.size}")
+            } catch (e: ChannelCastFfiException) {
+                weatherError = e.message ?: e.toString()
+                weather = null
+                status = "Weather fetch failed"
+                Log.e("ChannelCast", "fetchWeather failed", e)
+            } catch (e: Throwable) {
+                weatherError = e.message ?: e.toString()
+                weather = null
+                status = "Weather fetch crashed"
+                Log.e("ChannelCast", "fetchWeather crashed", e)
+            } finally {
+                loading = false
+            }
+            return@LaunchedEffect
+        }
+        weather = null
+        headlines = emptyList()
         try {
             val items = withContext(Dispatchers.IO) {
                 fetchHeadlines(id, 40u)
@@ -395,7 +423,18 @@ fun ChannelCastScreen(
                 } ?: "Headlines",
                 style = MaterialTheme.typography.headlineSmall,
             )
-            if (loading) {
+            if (selectedId == "weather") {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    WeatherDashboardContent(
+                        dash = weather,
+                        loading = loading,
+                        error = weatherError,
+                        onOpenUrl = onOpenUrl,
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        phoneDensity = false,
+                    )
+                }
+            } else if (loading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
@@ -459,7 +498,7 @@ fun ChannelCastScreen(
         }
 
         val detail = selectedHeadline
-        if (detail != null) {
+        if (detail != null && selectedId != "weather") {
             Column(
                 modifier = Modifier
                     .widthIn(min = 280.dp, max = 420.dp)

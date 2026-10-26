@@ -55,7 +55,9 @@ import kotlinx.coroutines.withContext
 import uniffi.channelcast_ffi.ChannelCastFfiException
 import uniffi.channelcast_ffi.FfiChannel
 import uniffi.channelcast_ffi.FfiHeadline
+import uniffi.channelcast_ffi.FfiWeatherDashboard
 import uniffi.channelcast_ffi.fetchHeadlines
+import uniffi.channelcast_ffi.fetchWeather
 import uniffi.channelcast_ffi.listChannels
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -79,6 +81,8 @@ fun PhoneChannelCastScreen(
     var loading by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
     var headlinesError by remember { mutableStateOf<String?>(null) }
+    var weather by remember { mutableStateOf<FfiWeatherDashboard?>(null) }
+    var weatherError by remember { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
@@ -103,6 +107,31 @@ fun PhoneChannelCastScreen(
         val id = selectedId ?: return@LaunchedEffect
         loading = true
         headlinesError = null
+        weatherError = null
+        if (id == "weather") {
+            headlines = emptyList()
+            try {
+                val dash = withContext(Dispatchers.IO) { fetchWeather() }
+                weather = dash
+                Log.i(
+                    "ChannelCast",
+                    "phone fetchWeather -> ${dash.now.temperatureF}F hourly=${dash.hourly.size} graphics=${dash.graphics.size} tropical=${dash.tropical.size}",
+                )
+            } catch (e: ChannelCastFfiException) {
+                weatherError = e.message ?: e.toString()
+                weather = null
+                Log.e("ChannelCast", "phone fetchWeather failed", e)
+            } catch (e: Throwable) {
+                weatherError = e.message ?: e.toString()
+                weather = null
+                Log.e("ChannelCast", "phone fetchWeather crashed", e)
+            } finally {
+                loading = false
+                refreshing = false
+            }
+            return@LaunchedEffect
+        }
+        weather = null
         headlines = emptyList()
         try {
             val items = withContext(Dispatchers.IO) { fetchHeadlines(id, 40u) }
@@ -181,7 +210,9 @@ fun PhoneChannelCastScreen(
         }
 
         PullToRefreshBox(
-            isRefreshing = refreshing || (loading && headlines.isEmpty()),
+            isRefreshing = refreshing || (loading && (
+                if (selectedId == "weather") weather == null else headlines.isEmpty()
+            )),
             onRefresh = {
                 if (selectedId != null) {
                     refreshing = true
@@ -192,7 +223,22 @@ fun PhoneChannelCastScreen(
                 .weight(1f)
                 .fillMaxWidth(),
         ) {
-            when {
+            val weatherPad = PaddingValues(
+                start = 12.dp,
+                end = 12.dp,
+                top = 4.dp,
+                bottom = 12.dp + navBottom,
+            )
+            if (selectedId == "weather") {
+                WeatherDashboardContent(
+                    dash = weather,
+                    loading = loading,
+                    error = weatherError,
+                    onOpenUrl = onOpenUrl,
+                    contentPadding = weatherPad,
+                    phoneDensity = true,
+                )
+            } else when {
                 loading && headlines.isEmpty() && headlinesError == null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = accent)
@@ -228,12 +274,7 @@ fun PhoneChannelCastScreen(
                 }
                 else -> {
                     LazyColumn(
-                        contentPadding = PaddingValues(
-                            start = 12.dp,
-                            end = 12.dp,
-                            top = 4.dp,
-                            bottom = 12.dp + navBottom,
-                        ),
+                        contentPadding = weatherPad,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {

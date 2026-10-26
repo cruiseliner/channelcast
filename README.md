@@ -1,5 +1,11 @@
 # ChannelCast
 
+## What's new in v0.1.19 (Android)
+
+- **Weather tab (live):** B2 stack — Now + hourly + 3-day (NWS MLB / ZIP 32920) with real NWS condition icons, then cover-cropped official MLB graphicast hazard maps (wind/coastal/gale when active). NHC tropical map + advisory only when Atlantic/Caribbean/Florida interest exists (hidden when empty).
+- Stale weather forecast-as-articles no longer drive the Weather tab.
+- Release: [v0.1.19-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.19-android)
+
 ## What's new in v0.1.18 (Android)
 
 - **Phone chrome:** removed redundant "ChannelCast" title bar, section name / story-count / photos status line, and large empty gap / bottom blank bar — chips + stories fill the screen (still dark Material 3 hero/photo cards).
@@ -108,7 +114,7 @@ egui/eframe shell — channel list + headlines; opens articles in your browser.
 
 ### Android (TV + phone)
 
-Debug APKs on [v0.1.18-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.18-android):
+Debug APKs on [v0.1.19-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.19-android):
 
 | Device | Asset | Package (debug) |
 |--------|-------|-----------------|

@@ -1,5 +1,5 @@
 //! ChannelCast core library: channel config, RSS/Atom fetch, SQLite cache, ranking.
-//! Minimal NWS forecast JSON + personal Gannett (Florida Today / USA Today) HTML/sitemap support.
+//! Minimal NWS forecast JSON, live Weather dashboard (MLB/NHC), + personal Gannett HTML/sitemap support.
 
 pub mod cache;
 pub mod config;
@@ -9,6 +9,7 @@ pub mod floridatoday;
 pub mod usatoday;
 pub mod model;
 pub mod nws;
+pub mod weather;
 pub mod rank;
 pub mod sanitize;
 pub mod excerpt;
@@ -29,6 +30,7 @@ pub use usatoday::{
 };
 pub use model::Article;
 pub use nws::{is_nws_forecast_url, parse_nws_forecast_bytes};
+pub use weather::{fetch_weather_dashboard, WeatherDashboard, WeatherDay, WeatherGraphic, WeatherHour, WeatherNow, WeatherTropical};
 pub use rank::dedupe_and_rank;
 pub use sanitize::{clean_summary, is_valid_article_url, sanitize_article, sanitize_articles, strip_tags};
 pub use excerpt::{enrich_thin_summaries, extract_excerpt_from_html, needs_excerpt, MIN_GOOD_EXCERPT};
