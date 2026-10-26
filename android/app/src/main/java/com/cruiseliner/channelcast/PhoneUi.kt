@@ -8,13 +8,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,10 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,8 +62,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Phone / S25 Ultra UI: Material 3 dark feed inspired by modern news apps
- * (hero photo cards, photo+headline rows, category chips) — original ChannelCast branding.
+ * Phone / S25 Ultra UI: Material 3 dark image-forward feed (hero cards, photo rows, chips).
+ * Chrome is minimal — no app-title bar, no section/count header, content fills the screen.
  * Shares UniFFI feeds with the TV leanback layout; tap opens via Custom Tabs.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,14 +79,12 @@ fun PhoneChannelCastScreen(
     var loading by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
     var headlinesError by remember { mutableStateOf<String?>(null) }
-    var status by remember { mutableStateOf("Loading channels…") }
     var refreshTick by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         try {
             val listed = withContext(Dispatchers.IO) { listChannels(false) }
             channels = listed
-            status = "${listed.size} channels"
             if (selectedId == null) {
                 selectedId = listed.firstOrNull { it.id == "top" }?.id
                     ?: listed.firstOrNull()?.id
@@ -94,11 +92,9 @@ fun PhoneChannelCastScreen(
             Log.i("ChannelCast", "phone listChannels -> ${listed.size}")
         } catch (e: ChannelCastFfiException) {
             channelsError = e.message ?: e.toString()
-            status = "Channel list failed"
             Log.e("ChannelCast", "phone listChannels failed", e)
         } catch (e: Throwable) {
             channelsError = e.message ?: e.toString()
-            status = "Native bridge failed"
             Log.e("ChannelCast", "phone listChannels crashed", e)
         }
     }
@@ -108,20 +104,16 @@ fun PhoneChannelCastScreen(
         loading = true
         headlinesError = null
         headlines = emptyList()
-        status = "Fetching $id…"
         try {
             val items = withContext(Dispatchers.IO) { fetchHeadlines(id, 40u) }
             headlines = items
             val withImg = items.count { !it.imageUrl.isNullOrBlank() }
-            status = "$id · ${items.size} stories · $withImg photos"
             Log.i("ChannelCast", "phone fetchHeadlines($id) -> ${items.size} (images=$withImg)")
         } catch (e: ChannelCastFfiException) {
             headlinesError = e.message ?: e.toString()
-            status = "Fetch failed for $id"
             Log.e("ChannelCast", "phone fetchHeadlines($id) failed", e)
         } catch (e: Throwable) {
             headlinesError = e.message ?: e.toString()
-            status = "Fetch crashed for $id"
             Log.e("ChannelCast", "phone fetchHeadlines($id) crashed", e)
         } finally {
             loading = false
@@ -136,211 +128,148 @@ fun PhoneChannelCastScreen(
     val accent = Color(0xFF9AB0D0)
     val onSurface = Color(0xFFF5F5F7)
     val muted = Color(0xFF8E8E93)
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    val selectedName = channels.firstOrNull { it.id == selectedId }?.name ?: "Today"
+    // No TopAppBar / section header chrome — chips + stories own the screen.
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(surface)
+            .statusBarsPadding(),
+    ) {
+        if (channelsError != null) {
+            Text(
+                text = channelsError!!,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
 
-    Scaffold(
-        containerColor = surface,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            items(channels, key = { it.id }) { ch ->
+                val selected = ch.id == selectedId
+                FilterChip(
+                    selected = selected,
+                    onClick = { selectedId = ch.id },
+                    label = {
                         Text(
-                            "ChannelCast",
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.3).sp,
-                        )
-                        Text(
-                            text = status,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = muted,
+                            ch.name,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = surface,
-                    titleContentColor = onSurface,
-                ),
-            )
-        },
-    ) { inner ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(inner),
-        ) {
-            if (channelsError != null) {
-                Text(
-                    text = channelsError!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = chipSelected,
+                        selectedLabelColor = onSurface,
+                        containerColor = Color(0xFF1C1C1E),
+                        labelColor = muted,
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = selected,
+                        borderColor = Color(0xFF2C2C2E),
+                        selectedBorderColor = accent,
+                    ),
                 )
             }
+        }
 
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                items(channels, key = { it.id }) { ch ->
-                    val selected = ch.id == selectedId
-                    FilterChip(
-                        selected = selected,
-                        onClick = { selectedId = ch.id },
-                        label = {
-                            Text(
-                                ch.name,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = chipSelected,
-                            selectedLabelColor = onSurface,
-                            containerColor = Color(0xFF1C1C1E),
-                            labelColor = muted,
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = selected,
-                            borderColor = Color(0xFF2C2C2E),
-                            selectedBorderColor = accent,
-                        ),
-                    )
+        PullToRefreshBox(
+            isRefreshing = refreshing || (loading && headlines.isEmpty()),
+            onRefresh = {
+                if (selectedId != null) {
+                    refreshing = true
+                    refreshTick += 1
                 }
-            }
-
-            PullToRefreshBox(
-                isRefreshing = refreshing || (loading && headlines.isEmpty()),
-                onRefresh = {
-                    if (selectedId != null) {
-                        refreshing = true
-                        refreshTick += 1
+            },
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+        ) {
+            when {
+                loading && headlines.isEmpty() && headlinesError == null -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = accent)
                     }
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-            ) {
-                when {
-                    loading && headlines.isEmpty() && headlinesError == null -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = accent)
-                        }
+                }
+                headlinesError != null -> {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            headlinesError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                     }
-                    headlinesError != null -> {
-                        Box(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                headlinesError!!,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                        }
+                }
+                headlines.isEmpty() -> {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "No stories yet — pick a channel or pull to refresh.",
+                            color = muted,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                     }
-                    headlines.isEmpty() -> {
-                        Box(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "No stories yet — pick a channel or pull to refresh.",
-                                color = muted,
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                        }
-                    }
-                    else -> {
-                        LazyColumn(
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = 4.dp,
-                                bottom = 32.dp,
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(14.dp),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .navigationBarsPadding(),
-                        ) {
-                            item(key = "section-header") {
-                                SectionHeader(
-                                    title = selectedName,
-                                    subtitle = formatSectionDate(),
+                }
+                else -> {
+                    LazyColumn(
+                        contentPadding = PaddingValues(
+                            start = 12.dp,
+                            end = 12.dp,
+                            top = 4.dp,
+                            bottom = 12.dp + navBottom,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        itemsIndexed(headlines, key = { _, h -> h.url + h.title }) { index, h ->
+                            val hasImage = !h.imageUrl.isNullOrBlank()
+                            if (index == 0 && hasImage) {
+                                HeroStoryCard(
+                                    headline = h,
+                                    cardColor = card,
                                     onSurface = onSurface,
                                     muted = muted,
+                                    onClick = { onOpenUrl(h.url, h.title, h.summary) },
                                 )
-                            }
-                            itemsIndexed(headlines, key = { _, h -> h.url + h.title }) { index, h ->
-                                val hasImage = !h.imageUrl.isNullOrBlank()
-                                if (index == 0 && hasImage) {
-                                    HeroStoryCard(
-                                        headline = h,
-                                        cardColor = card,
-                                        onSurface = onSurface,
-                                        muted = muted,
-                                        onClick = { onOpenUrl(h.url, h.title, h.summary) },
-                                    )
-                                } else if (hasImage) {
-                                    PhotoRowCard(
-                                        headline = h,
-                                        cardColor = card,
-                                        onSurface = onSurface,
-                                        muted = muted,
-                                        onClick = { onOpenUrl(h.url, h.title, h.summary) },
-                                    )
-                                } else {
-                                    TextStoryCard(
-                                        headline = h,
-                                        cardColor = card,
-                                        onSurface = onSurface,
-                                        muted = muted,
-                                        accent = accent,
-                                        onClick = { onOpenUrl(h.url, h.title, h.summary) },
-                                    )
-                                }
+                            } else if (hasImage) {
+                                PhotoRowCard(
+                                    headline = h,
+                                    cardColor = card,
+                                    onSurface = onSurface,
+                                    muted = muted,
+                                    onClick = { onOpenUrl(h.url, h.title, h.summary) },
+                                )
+                            } else {
+                                TextStoryCard(
+                                    headline = h,
+                                    cardColor = card,
+                                    onSurface = onSurface,
+                                    muted = muted,
+                                    accent = accent,
+                                    onClick = { onOpenUrl(h.url, h.title, h.summary) },
+                                )
                             }
                         }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun SectionHeader(
-    title: String,
-    subtitle: String,
-    onSurface: Color,
-    muted: Color,
-) {
-    Column(Modifier.padding(top = 4.dp, bottom = 2.dp)) {
-        Text(
-            text = subtitle.uppercase(Locale.US),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.2.sp,
-            color = muted,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = onSurface,
-            letterSpacing = (-0.5).sp,
-        )
     }
 }
 
@@ -540,8 +469,3 @@ private fun formatShortTime(rfc3339: String): String? = try {
     rfc3339.take(16).replace('T', ' ')
 }
 
-private fun formatSectionDate(): String = try {
-    java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.US))
-} catch (_: Exception) {
-    "Today"
-}

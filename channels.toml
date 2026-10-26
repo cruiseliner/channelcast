@@ -20,117 +20,6 @@ feeds = [
 ]
 
 [[channels]]
-id = "weather"
-name = "Weather"
-description = "NWS forecast + alerts for ZIP 32920 (Cape Canaveral / Cocoa Beach FL). Forecast is NWS JSON (core nws module); alerts are Atom."
-enabled = true
-personal = true
-feeds = [
-  # Active alerts first (Atom — feed-rs); dated so they rank above forecast periods
-  "https://api.weather.gov/alerts/active.atom?zone=FLZ747",
-  # 7-day forecast JSON → Article per period (ChannelCast nws parser)
-  "https://api.weather.gov/gridpoints/MLB/56,65/forecast",
-]
-# Also useful: hourly https://api.weather.gov/gridpoints/MLB/56,65/forecast/hourly
-# Point alerts: https://api.weather.gov/alerts/active.atom?point=28.3903,-80.6043
-
-[[channels]]
-id = "watchman"
-name = "Watchman"
-description = "Personal End Times / Israel geopolitics aggregator. Allowlisted news RSS + keyword filter only — not LLM prophecy. Public repo ≠ endorsement."
-enabled = true
-personal = true
-feeds = [
-  "https://www.jpost.com/rss/rssfeedsfrontpage.aspx",
-  "https://www.timesofisrael.com/feed/",
-  "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml",
-  "https://www.israeltoday.co.il/feed/",
-  # Israel365 direct feed is Cloudflare-gated; Google News site: proxy works for CLI.
-  "https://news.google.com/rss/search?q=site:israel365news.com&hl=en-US&gl=US&ceid=US:en",
-]
-# Prefer direct if CF clears: https://israel365news.com/feed/
-# Also: https://breakingisraelnews.com/feed/
-# Case-insensitive match against title + summary. Edit freely.
-# Tight v1: dropped broad israel/jerusalem (and war-flood terms that match most ME headlines).
-# Geographic watch + prophecy lexicon only — edit freely.
-keywords = [
-  "turkey",
-  "turkish",
-  "ankara",
-  "gog",
-  "magog",
-  "damascus",
-  "temple mount",
-  "third temple",
-  "red heifer",
-  "ezekiel",
-  "daniel",
-  "revelation",
-  "prophecy",
-  "prophetic",
-  "armageddon",
-  "megiddo",
-  "gog and magog",
-  # false-messiah / Knesset "Yeshua" watch (e.g. Israel Today "Son of David" PM story)
-  "yeshua",
-  "son of david",
-  "false messiah",
-  "false christ",
-  "antichrist",
-  "anti-messiah",
-  "messiah candidate",
-  "jesus, son of david",
-]
-
-# Weather / local keyed to ZIP 32920 (Cape Canaveral / Cocoa Beach, Brevard County, FL).
-# Geocode: 28.3903,-80.6043 → NWS office MLB grid 56,65; forecast zone FLZ747; county FLC009.
-# Points: https://api.weather.gov/points/28.3903,-80.6043 (HTTP 200, 2026-10-24)
-
-[[channels]]
-id = "markets"
-name = "Markets"
-description = "Business and markets"
-feeds = [
-  "https://feeds.bbci.co.uk/news/business/rss.xml",
-  "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-]
-
-[[channels]]
-id = "tech"
-name = "Tech"
-description = "Technology and software. Free RSS + personal USA Today tech HTML/sitemap (cookie optional)."
-feeds = [
-  "https://hnrss.org/frontpage",
-  "https://feeds.arstechnica.com/arstechnica/index",
-  # Personal USA Today tech desk (Gannett HTML/sitemap — no public RSS).
-  "https://www.usatoday.com/tech/",
-  "https://www.usatoday.com/news-sitemap.xml#tech",
-]
-
-[[channels]]
-id = "entertainment"
-name = "Entertainment"
-description = "Entertainment headlines. Personal USA Today entertainment HTML/sitemap (cookie optional) — no public RSS."
-enabled = true
-personal = true
-feeds = [
-  "https://www.usatoday.com/entertainment/",
-  "https://www.usatoday.com/news-sitemap.xml#entertainment",
-]
-# USA Today = national / tech / entertainment; Florida Today stays Space Coast / local.
-
-[[channels]]
-id = "prowrestling"
-name = "Pro Wrestling"
-description = "Pro wrestling news (personal). Free public RSS only."
-enabled = true
-personal = true
-feeds = [
-  "https://www.fightful.com/feed",
-  "https://www.f4wonline.com/feed",
-]
-
-[[channels]]
 id = "local"
 name = "Local"
 description = "Brevard / Space Coast community news for ZIP 32920 (Cape Canaveral area). Free RSS + personal Florida Today /space/ HTML (cookie optional)."
@@ -192,3 +81,114 @@ keywords = [
   "starlink",
   "crew-",
 ]
+
+[[channels]]
+id = "markets"
+name = "Markets"
+description = "Business and markets"
+feeds = [
+  "https://feeds.bbci.co.uk/news/business/rss.xml",
+  "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+]
+
+[[channels]]
+id = "tech"
+name = "Tech"
+description = "Technology and software. Free RSS + personal USA Today tech HTML/sitemap (cookie optional)."
+feeds = [
+  "https://hnrss.org/frontpage",
+  "https://feeds.arstechnica.com/arstechnica/index",
+  # Personal USA Today tech desk (Gannett HTML/sitemap — no public RSS).
+  "https://www.usatoday.com/tech/",
+  "https://www.usatoday.com/news-sitemap.xml#tech",
+]
+
+[[channels]]
+id = "entertainment"
+name = "Entertainment"
+description = "Entertainment headlines. Personal USA Today entertainment HTML/sitemap (cookie optional) — no public RSS."
+enabled = true
+personal = true
+feeds = [
+  "https://www.usatoday.com/entertainment/",
+  "https://www.usatoday.com/news-sitemap.xml#entertainment",
+]
+# USA Today = national / tech / entertainment; Florida Today stays Space Coast / local.
+
+[[channels]]
+id = "prowrestling"
+name = "Pro Wrestling"
+description = "Pro wrestling news (personal). Free public RSS only."
+enabled = true
+personal = true
+feeds = [
+  "https://www.fightful.com/feed",
+  "https://www.f4wonline.com/feed",
+]
+
+[[channels]]
+id = "watchman"
+name = "Watchman"
+description = "Personal End Times / Israel geopolitics aggregator. Allowlisted news RSS + keyword filter only — not LLM prophecy. Public repo ≠ endorsement."
+enabled = true
+personal = true
+feeds = [
+  "https://www.jpost.com/rss/rssfeedsfrontpage.aspx",
+  "https://www.timesofisrael.com/feed/",
+  "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml",
+  "https://www.israeltoday.co.il/feed/",
+  # Israel365 direct feed is Cloudflare-gated; Google News site: proxy works for CLI.
+  "https://news.google.com/rss/search?q=site:israel365news.com&hl=en-US&gl=US&ceid=US:en",
+]
+# Prefer direct if CF clears: https://israel365news.com/feed/
+# Also: https://breakingisraelnews.com/feed/
+# Case-insensitive match against title + summary. Edit freely.
+# Tight v1: dropped broad israel/jerusalem (and war-flood terms that match most ME headlines).
+# Geographic watch + prophecy lexicon only — edit freely.
+keywords = [
+  "turkey",
+  "turkish",
+  "ankara",
+  "gog",
+  "magog",
+  "damascus",
+  "temple mount",
+  "third temple",
+  "red heifer",
+  "ezekiel",
+  "daniel",
+  "revelation",
+  "prophecy",
+  "prophetic",
+  "armageddon",
+  "megiddo",
+  "gog and magog",
+  # false-messiah / Knesset "Yeshua" watch (e.g. Israel Today "Son of David" PM story)
+  "yeshua",
+  "son of david",
+  "false messiah",
+  "false christ",
+  "antichrist",
+  "anti-messiah",
+  "messiah candidate",
+  "jesus, son of david",
+]
+
+# Weather / local keyed to ZIP 32920 (Cape Canaveral / Cocoa Beach, Brevard County, FL).
+# Geocode: 28.3903,-80.6043 → NWS office MLB grid 56,65; forecast zone FLZ747; county FLC009.
+# Points: https://api.weather.gov/points/28.3903,-80.6043 (HTTP 200, 2026-10-24)
+
+[[channels]]
+id = "weather"
+name = "Weather"
+description = "NWS forecast + alerts for ZIP 32920 (Cape Canaveral / Cocoa Beach FL). Forecast is NWS JSON (core nws module); alerts are Atom."
+enabled = true
+personal = true
+feeds = [
+  # Active alerts first (Atom — feed-rs); dated so they rank above forecast periods
+  "https://api.weather.gov/alerts/active.atom?zone=FLZ747",
+  # 7-day forecast JSON → Article per period (ChannelCast nws parser)
+  "https://api.weather.gov/gridpoints/MLB/56,65/forecast",
+]
+# Also useful: hourly https://api.weather.gov/gridpoints/MLB/56,65/forecast/hourly
+# Point alerts: https://api.weather.gov/alerts/active.atom?point=28.3903,-80.6043

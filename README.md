@@ -1,5 +1,11 @@
 # ChannelCast
 
+## What's new in v0.1.18 (Android)
+
+- **Phone chrome:** removed redundant "ChannelCast" title bar, section name / story-count / photos status line, and large empty gap / bottom blank bar — chips + stories fill the screen (still dark Material 3 hero/photo cards).
+- **Default channel order** (phone + TV + CLI/desktop via `channels.toml`): Top → Local → Space Coast → Markets → Tech → Entertainment → Pro Wrestling → Watchman (Weather left last for a separate revamp).
+- Release: [v0.1.18-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.18-android)
+
 ## What's new in v0.1.17 (Android)
 
 - **Phone:** dark Material 3 feed (#121212) — hero photo cards, photo+headline rows, category chips (news-app patterns; original ChannelCast branding).
@@ -102,7 +108,7 @@ egui/eframe shell — channel list + headlines; opens articles in your browser.
 
 ### Android (TV + phone)
 
-Debug APKs on [v0.1.17-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.17-android):
+Debug APKs on [v0.1.18-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.18-android):
 
 | Device | Asset | Package (debug) |
 |--------|-------|-----------------|

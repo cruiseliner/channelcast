@@ -2,7 +2,7 @@
 
 **Phone APK** (Samsung S25 Ultra) and **Android TV leanback APK** that a custom TV launcher can open (same idea as Guide → TiviMate).
 
-**Status (v0.1.17):** UniFFI bridge live. Default channel is **top**. Phone: dark Material 3 hero/photo cards (Coil), chips, pull-to-refresh, Custom Tabs. Story images via MediaRSS/og:image. TV: leanback focus UI + in-app WebView. Sports removed. Space Coast + enriched excerpts in core.
+**Status (v0.1.18):** UniFFI bridge live. Default channel is **top**. Phone: dark Material 3 hero/photo cards (Coil), chips (no title/section chrome), pull-to-refresh, Custom Tabs. Channel order: Top→Local→Space Coast→Markets→Tech→Entertainment→Pro Wrestling→Watchman (Weather last). Story images via MediaRSS/og:image. TV: leanback focus UI + in-app WebView. Sports removed. Space Coast + enriched excerpts in core.
 
 ## Layout
 

@@ -100,6 +100,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn default_channel_order_matches_adam_strip() {
+        let chans = list_channels(false).expect("config");
+        let ids: Vec<&str> = chans.iter().map(|c| c.id.as_str()).collect();
+        let expected = [
+            "top",
+            "local",
+            "spacecoast",
+            "markets",
+            "tech",
+            "entertainment",
+            "prowrestling",
+            "watchman",
+            "weather",
+        ];
+        assert_eq!(ids, expected, "channels.toml order drives phone+TV strip");
+    }
+
+    #[test]
     fn lists_enabled_channels_including_watchman() {
         let chans = list_channels(false).expect("config");
         assert!(chans.iter().any(|c| c.id == "watchman"));
