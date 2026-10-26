@@ -2,7 +2,7 @@
 
 **Phone APK** (Samsung S25 Ultra) and **Android TV leanback APK** that a custom TV launcher can open (same idea as Guide → TiviMate).
 
-**Status (v0.1.8):** UniFFI bridge live. Default channel is **top**. Articles open in-app **WebView** on TV (Custom Tabs / browser on phone). Sports channel removed. Story detail pane + Open article.
+**Status (v0.1.16):** UniFFI bridge live. Default channel is **top**. Phone: Material 3 chips + cards, edge-to-edge, pull-to-refresh, Custom Tabs. TV: leanback focus UI + in-app WebView. Sports removed. Space Coast + enriched excerpts in core.
 
 ## Layout
 
@@ -83,6 +83,8 @@ adb shell am start -a android.intent.action.VIEW \
 Package: `com.cruiseliner.channelcast.tv.debug`
 
 ### Phone (S25 Ultra)
+
+Always prefer the newest `v*-android` release that lists **both** `channelcast-mobile-debug.apk` and `channelcast-tv-debug.apk`.
 
 ```bash
 adb install -r channelcast-mobile-debug.apk

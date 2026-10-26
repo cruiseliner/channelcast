@@ -1,18 +1,25 @@
 # ChannelCast
 
+## What's new in v0.1.16 (Android)
+
+- **Phone Material 3 UI** (S25 Ultra): channel chips, headline cards, edge-to-edge, pull-to-refresh; articles via Custom Tabs
+- TV leanback layout unchanged (focus rings + in-app WebView)
+- Both `channelcast-mobile-debug.apk` and `channelcast-tv-debug.apk` on the same release again
+- Release: [v0.1.16-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.16-android)
+
 ## What's new in v0.1.8 (Android)
 
 - **In-app WebView reader** on Android TV (no browser toast for Tech / USA Today links)
 - Story detail pane: select a headline for full summary; **Open article** / second click loads WebView
 - **Sports** channel removed
 - Default channel on open is **top** (not Watchman)
-- Release: [v0.1.14-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.14-android)
+- Release: [v0.1.8-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.8-android)
 
 ## What's new in v0.1.7 (Android)
 
 - **UniFFI bridge**: TV + phone APKs load **real headlines** from `channelcast-core` (Watchman, Space Coast, Top, …)
 - Native libs: `arm64-v8a` + `armeabi-v7a` via `cargo-ndk`
-- Release: [v0.1.14-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.14-android)
+- Release: [v0.1.7-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.7-android)
 
 ## What's new in v0.1.5
 
@@ -94,7 +101,7 @@ egui/eframe shell — channel list + headlines; opens articles in your browser.
 
 ### Android (TV + phone)
 
-Debug APKs on [v0.1.14-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.14-android):
+Debug APKs on [v0.1.16-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.16-android):
 
 | Device | Asset | Package (debug) |
 |--------|-------|-----------------|

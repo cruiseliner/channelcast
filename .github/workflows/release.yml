@@ -210,7 +210,16 @@ jobs:
 
             Unpack and run `channelcast-desktop` (`channelcast-desktop.exe` on Windows). Linux needs a display and typical X11/Wayland libraries (`libxcb`, `libxkbcommon`).
 
-            **Android APK:** not available yet (planned; UniFFI/JNI shell around `channelcast-core`). Android TV leanback later.
+            ## Android (debug APKs)
+
+            Sideload from this release when attached (built on a machine with NDK; not produced by this workflow):
+
+            | Device | Asset | Package |
+            |--------|-------|---------|
+            | Phone (S25 Ultra) | `channelcast-mobile-debug.apk` | `com.cruiseliner.channelcast.debug` |
+            | Android TV | `channelcast-tv-debug.apk` | `com.cruiseliner.channelcast.tv.debug` |
+
+            Phone: Material 3 chips/cards, Custom Tabs. TV: leanback focus UI + in-app WebView.
 
             Build from source:
             ```

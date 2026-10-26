@@ -10,6 +10,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -68,6 +69,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val initial = channelIdFromIntent(intent)
+        val television = isTelevision()
+        // Edge-to-edge helps phone (S25) status/nav insets; harmless on TV.
+        enableEdgeToEdge()
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
@@ -80,10 +84,17 @@ class MainActivity : ComponentActivity() {
                 ),
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ChannelCastScreen(
-                        initialChannelId = initial,
-                        onOpenUrl = { url, title, summary -> openArticle(url, title, summary) },
-                    )
+                    if (television) {
+                        ChannelCastScreen(
+                            initialChannelId = initial,
+                            onOpenUrl = { url, title, summary -> openArticle(url, title, summary) },
+                        )
+                    } else {
+                        PhoneChannelCastScreen(
+                            initialChannelId = initial,
+                            onOpenUrl = { url, title, summary -> openArticle(url, title, summary) },
+                        )
+                    }
                 }
             }
         }
