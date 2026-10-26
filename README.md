@@ -1,11 +1,12 @@
 # ChannelCast
 
-## What's new in v0.1.16 (Android)
+## What's new in v0.1.17 (Android)
 
-- **Phone Material 3 UI** (S25 Ultra): channel chips, headline cards, edge-to-edge, pull-to-refresh; articles via Custom Tabs
-- TV leanback layout unchanged (focus rings + in-app WebView)
-- Both `channelcast-mobile-debug.apk` and `channelcast-tv-debug.apk` on the same release again
-- Release: [v0.1.16-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.16-android)
+- **Phone:** dark Material 3 feed (#121212) — hero photo cards, photo+headline rows, category chips (news-app patterns; original ChannelCast branding).
+- **Story photos:** MediaRSS / enclosure / HTML `<img>` / `og:image` → `FfiHeadline.imageUrl` → Coil.
+- **TV APK** rebuilt alongside mobile (same UniFFI core).
+- Release: [v0.1.17-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.17-android)
+
 
 ## What's new in v0.1.8 (Android)
 
@@ -101,7 +102,7 @@ egui/eframe shell — channel list + headlines; opens articles in your browser.
 
 ### Android (TV + phone)
 
-Debug APKs on [v0.1.16-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.16-android):
+Debug APKs on [v0.1.17-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.17-android):
 
 | Device | Asset | Package (debug) |
 |--------|-------|-----------------|

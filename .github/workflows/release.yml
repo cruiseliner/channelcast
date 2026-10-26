@@ -219,7 +219,7 @@ jobs:
             | Phone (S25 Ultra) | `channelcast-mobile-debug.apk` | `com.cruiseliner.channelcast.debug` |
             | Android TV | `channelcast-tv-debug.apk` | `com.cruiseliner.channelcast.tv.debug` |
 
-            Phone: Material 3 chips/cards, Custom Tabs. TV: leanback focus UI + in-app WebView.
+            Phone: dark Material 3 hero/photo cards (Coil), chips, Custom Tabs. TV: leanback + WebView. Story images via MediaRSS/og:image.
 
             Build from source:
             ```

@@ -60,6 +60,7 @@ mod tests {
             title: title.into(),
             url: url.into(),
             summary: None,
+            image_url: None,
             published: secs.map(|s| Utc.timestamp_opt(s, 0).unwrap()),
             source: "t".into(),
             channel_id: "tech".into(),

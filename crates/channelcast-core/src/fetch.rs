@@ -1,5 +1,6 @@
 use crate::error::{Error, Result};
 use crate::model::Article;
+use crate::image::{first_img_src, normalize_image_url};
 use crate::sanitize::{normalize_article_url, sanitize_article};
 use crate::floridatoday::{fetch_floridatoday, is_floridatoday_url};
 use crate::usatoday::{fetch_usatoday, is_usatoday_url};
@@ -43,6 +44,70 @@ pub fn fetch_feed(url: &str, channel_id: &str) -> Result<Vec<Article>> {
 }
 
 
+
+fn image_url_from_entry(entry: &feed_rs::model::Entry, summary_html: Option<&str>) -> Option<String> {
+    for media in &entry.media {
+        for thumb in &media.thumbnails {
+            if let Some(u) = normalize_image_url(&thumb.image.uri) {
+                return Some(u);
+            }
+        }
+        for content in &media.content {
+            let mime = content
+                .content_type
+                .as_ref()
+                .map(|m| m.to_string())
+                .unwrap_or_default()
+                .to_ascii_lowercase();
+            if let Some(ref url) = content.url {
+                let s = url.as_str();
+                let looks_img = mime.starts_with("image/")
+                    || s.to_ascii_lowercase().contains(".jpg")
+                    || s.to_ascii_lowercase().contains(".jpeg")
+                    || s.to_ascii_lowercase().contains(".png")
+                    || s.to_ascii_lowercase().contains(".webp")
+                    || s.to_ascii_lowercase().contains(".gif");
+                if looks_img {
+                    if let Some(u) = normalize_image_url(s) {
+                        return Some(u);
+                    }
+                }
+            }
+        }
+    }
+    // RSS enclosure / Atom link rel=enclosure with image type, or image-looking href.
+    for link in &entry.links {
+        let rel = link.rel.as_deref().unwrap_or("").to_ascii_lowercase();
+        let mime = link.media_type.as_deref().unwrap_or("").to_ascii_lowercase();
+        let href = &link.href;
+        let lower = href.to_ascii_lowercase();
+        let enclosure = rel == "enclosure" || rel == "related";
+        let image_mime = mime.starts_with("image/");
+        let image_ext = [".jpg", ".jpeg", ".png", ".webp", ".gif"].iter().any(|e| lower.contains(e));
+        if (enclosure && (image_mime || image_ext)) || image_mime || (image_ext && rel.is_empty()) {
+            if let Some(u) = normalize_image_url(href) {
+                return Some(u);
+            }
+        }
+    }
+    if let Some(content) = entry.content.as_ref() {
+        if let Some(ref src) = content.src {
+            let mime = src.media_type.as_deref().unwrap_or("").to_ascii_lowercase();
+            if mime.starts_with("image/") {
+                if let Some(u) = normalize_image_url(&src.href) {
+                    return Some(u);
+                }
+            }
+        }
+        if let Some(ref body) = content.body {
+            if let Some(u) = first_img_src(body) {
+                return Some(u);
+            }
+        }
+    }
+    summary_html.and_then(first_img_src)
+}
+
 /// Follow redirects for Google News article URLs so WebView/open get a publisher page.
 fn unwrap_google_news_url(client: &reqwest::blocking::Client, url: &str) -> String {
     let lower = url.to_ascii_lowercase();
@@ -81,6 +146,15 @@ pub fn parse_feed_bytes(bytes: &[u8], source_url: &str, channel_id: &str) -> Res
 
     let mut out = Vec::with_capacity(feed.entries.len());
     for entry in feed.entries {
+        let summary = entry
+            .summary
+            .as_ref()
+            .map(|s| s.content.clone())
+            .or_else(|| entry.content.as_ref().and_then(|c| c.body.clone()));
+        // Prefer MediaRSS thumbnail / image content, then enclosure-like links, then <img> in HTML.
+        // Must run before we move `entry.title` / other Option fields.
+        let image_url = image_url_from_entry(&entry, summary.as_deref());
+
         let title = entry
             .title
             .map(|t| t.content)
@@ -103,16 +177,13 @@ pub fn parse_feed_bytes(bytes: &[u8], source_url: &str, channel_id: &str) -> Res
         if url.is_empty() {
             continue;
         }
-        let summary = entry
-            .summary
-            .map(|s| s.content)
-            .or_else(|| entry.content.and_then(|c| c.body));
         let published = entry.published.or(entry.updated);
 
         let mut article = Article {
             title,
             url,
             summary,
+            image_url,
             published,
             source: source_label.clone(),
             channel_id: channel_id.to_string(),

@@ -101,6 +101,7 @@ pub fn parse_nws_forecast_bytes(
             title,
             url,
             summary,
+            image_url: None,
             published: None,
             source: source.clone(),
             channel_id: channel_id.to_string(),

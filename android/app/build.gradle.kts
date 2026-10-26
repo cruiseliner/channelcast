@@ -12,8 +12,8 @@ android {
         applicationId = "com.cruiseliner.channelcast"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.1.16-android"
+        versionCode = 17
+        versionName = "0.1.17-android"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
@@ -86,6 +86,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("androidx.browser:browser:1.8.0")
+
+    // Story photos (MediaRSS / og:image)
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     // UniFFI Kotlin bindings load libchannelcast_ffi.so via JNA
     implementation("net.java.dev.jna:jna:5.15.0@aar")

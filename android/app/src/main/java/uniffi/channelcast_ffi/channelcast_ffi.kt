@@ -1155,6 +1155,10 @@ data class FfiHeadline (
     var `source`: kotlin.String, 
     var `summary`: kotlin.String?, 
     /**
+     * Story photo / infographic when MediaRSS, HTML img, or og:image provided one.
+     */
+    var `imageUrl`: kotlin.String?, 
+    /**
      * RFC 3339 UTC when known.
      */
     var `published`: kotlin.String?, 
@@ -1175,6 +1179,7 @@ public object FfiConverterTypeFfiHeadline: FfiConverterRustBuffer<FfiHeadline> {
             FfiConverterString.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
             FfiConverterString.read(buf),
         )
     }
@@ -1184,6 +1189,7 @@ public object FfiConverterTypeFfiHeadline: FfiConverterRustBuffer<FfiHeadline> {
             FfiConverterString.allocationSize(value.`url`) +
             FfiConverterString.allocationSize(value.`source`) +
             FfiConverterOptionalString.allocationSize(value.`summary`) +
+            FfiConverterOptionalString.allocationSize(value.`imageUrl`) +
             FfiConverterOptionalString.allocationSize(value.`published`) +
             FfiConverterString.allocationSize(value.`channelId`)
     )
@@ -1193,6 +1199,7 @@ public object FfiConverterTypeFfiHeadline: FfiConverterRustBuffer<FfiHeadline> {
             FfiConverterString.write(value.`url`, buf)
             FfiConverterString.write(value.`source`, buf)
             FfiConverterOptionalString.write(value.`summary`, buf)
+            FfiConverterOptionalString.write(value.`imageUrl`, buf)
             FfiConverterOptionalString.write(value.`published`, buf)
             FfiConverterString.write(value.`channelId`, buf)
     }

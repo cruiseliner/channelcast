@@ -100,6 +100,7 @@ mod tests {
             title: title.into(),
             url: format!("https://ex.com/{}", title.len()),
             summary: summary.map(str::to_string),
+            image_url: None,
             published: None,
             source: "t".into(),
             channel_id: "watchman".into(),

@@ -7,6 +7,7 @@
 //! Uses public HTML only: og:description → meta description → first paragraph.
 //! Short timeouts; never blocks the channel on a slow host.
 
+use crate::image::extract_image_from_html;
 use crate::model::Article;
 use crate::sanitize::{is_hn_comments_url, is_valid_article_url, strip_tags};
 use std::time::Duration;
@@ -50,7 +51,9 @@ fn is_thin_summary(s: &str) -> bool {
     t.len() < 60
 }
 
-/// Replace thin/missing summaries in-place for up to `MAX_FETCHES` articles.
+/// Replace thin/missing summaries and fill missing `image_url` (og:image) in-place.
+///
+/// One HTML fetch can satisfy both. Budget is shared so Top stays snappy on phone.
 pub fn enrich_thin_summaries(articles: &mut [Article]) {
     let client = match reqwest::blocking::Client::builder()
         .user_agent(USER_AGENT)
@@ -67,12 +70,25 @@ pub fn enrich_thin_summaries(articles: &mut [Article]) {
         if fetched >= MAX_FETCHES {
             break;
         }
-        if !needs_excerpt(article) {
+        let need_ex = needs_excerpt(article);
+        let need_img = article.image_url.is_none()
+            && is_valid_article_url(&article.url)
+            && !is_hn_comments_url(&article.url);
+        if !need_ex && !need_img {
             continue;
         }
-        match fetch_excerpt(&client, &article.url) {
-            Some(excerpt) => {
-                article.summary = Some(excerpt);
+        match fetch_page_html(&client, &article.url) {
+            Some(html) => {
+                if need_ex {
+                    if let Some(excerpt) = extract_excerpt_from_html(&html) {
+                        article.summary = Some(excerpt);
+                    }
+                }
+                if need_img {
+                    if let Some(img) = extract_image_from_html(&html) {
+                        article.image_url = Some(img);
+                    }
+                }
                 fetched += 1;
             }
             None => {
@@ -83,7 +99,7 @@ pub fn enrich_thin_summaries(articles: &mut [Article]) {
     }
 }
 
-fn fetch_excerpt(client: &reqwest::blocking::Client, url: &str) -> Option<String> {
+fn fetch_page_html(client: &reqwest::blocking::Client, url: &str) -> Option<String> {
     let resp = client
         .get(url)
         .header(
@@ -102,8 +118,7 @@ fn fetch_excerpt(client: &reqwest::blocking::Client, url: &str) -> Option<String
     } else {
         &bytes[..]
     };
-    let html = std::str::from_utf8(slice).ok()?;
-    extract_excerpt_from_html(html)
+    std::str::from_utf8(slice).ok().map(|s| s.to_string())
 }
 
 /// Public for unit tests.
@@ -292,6 +307,7 @@ mod tests {
             title: "t".into(),
             url: "https://example.com/post".into(),
             summary: Some("From example.com · 42 points on Hacker News · 10 comments".into()),
+            image_url: None,
             published: None,
             source: "HN".into(),
             channel_id: "tech".into(),
@@ -307,6 +323,7 @@ mod tests {
             title: "t".into(),
             url: "https://www.fightful.com/a".into(),
             summary: Some(blurb.into()),
+            image_url: None,
             published: None,
             source: "Fightful".into(),
             channel_id: "prowrestling".into(),

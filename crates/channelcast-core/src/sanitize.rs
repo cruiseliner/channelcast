@@ -487,6 +487,7 @@ mod tests {
 <p>Comments URL: <a href="https://news.ycombinator.com/item?id=9">y</a></p>"#
                     .into(),
             ),
+            image_url: None,
             published: None,
             source: "t".into(),
             channel_id: "tech".into(),
@@ -508,6 +509,7 @@ mod tests {
                 title: "Good".into(),
                 url: "https://example.com/a".into(),
                 summary: Some("<p>Hi</p>".into()),
+                image_url: None,
                 published: None,
                 source: "t".into(),
                 channel_id: "tech".into(),
@@ -516,6 +518,7 @@ mod tests {
                 title: "Bad".into(),
                 url: "https:/".into(),
                 summary: Some("x".into()),
+                image_url: None,
                 published: None,
                 source: "t".into(),
                 channel_id: "tech".into(),

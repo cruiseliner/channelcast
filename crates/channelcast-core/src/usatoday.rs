@@ -409,6 +409,7 @@ fn push_listing_item(
     out.push(Article {
         title,
         url: caps.href,
+            image_url: None,
         summary,
         published,
         source: SOURCE_LABEL.into(),
@@ -511,6 +512,7 @@ fn parse_sitemap_xml(xml: &str, channel_id: &str, filter: SitemapFilter) -> Resu
             title,
             url: loc,
             summary: None,
+            image_url: None,
             published,
             source: SOURCE_LABEL.into(),
             channel_id: channel_id.to_string(),

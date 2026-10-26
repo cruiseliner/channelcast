@@ -23,6 +23,8 @@ pub struct FfiHeadline {
     pub url: String,
     pub source: String,
     pub summary: Option<String>,
+    /// Story photo / infographic when MediaRSS, HTML img, or og:image provided one.
+    pub image_url: Option<String>,
     /// RFC 3339 UTC when known.
     pub published: Option<String>,
     pub channel_id: String,
@@ -86,6 +88,7 @@ pub fn fetch_headlines(
             url: a.url,
             source: a.source,
             summary: a.summary,
+            image_url: a.image_url,
             published: a.published.map(|t| t.to_rfc3339()),
             channel_id: a.channel_id,
         })

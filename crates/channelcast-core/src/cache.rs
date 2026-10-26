@@ -30,6 +30,7 @@ impl Cache {
                 url TEXT PRIMARY KEY NOT NULL,
                 title TEXT NOT NULL,
                 summary TEXT,
+                image_url TEXT,
                 published_rfc3339 TEXT,
                 source TEXT NOT NULL,
                 channel_id TEXT NOT NULL,
@@ -39,6 +40,18 @@ impl Cache {
                 ON articles(channel_id, published_rfc3339 DESC);
             "#,
         )?;
+        // Older caches created before image_url — add column if missing.
+        let has_image: bool = self
+            .conn
+            .prepare("PRAGMA table_info(articles)")?
+            .query_map([], |row| row.get::<_, String>(1))?
+            .filter_map(|r| r.ok())
+            .any(|name| name == "image_url");
+        if !has_image {
+            let _ = self
+                .conn
+                .execute("ALTER TABLE articles ADD COLUMN image_url TEXT", []);
+        }
         Ok(())
     }
 
@@ -48,11 +61,12 @@ impl Cache {
         {
             let mut stmt = tx.prepare(
                 r#"
-                INSERT INTO articles (url, title, summary, published_rfc3339, source, channel_id)
-                VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                INSERT INTO articles (url, title, summary, image_url, published_rfc3339, source, channel_id)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
                 ON CONFLICT(url) DO UPDATE SET
                     title = excluded.title,
                     summary = excluded.summary,
+                    image_url = excluded.image_url,
                     published_rfc3339 = excluded.published_rfc3339,
                     source = excluded.source,
                     channel_id = excluded.channel_id,
@@ -65,6 +79,7 @@ impl Cache {
                     a.url,
                     a.title,
                     a.summary,
+                    a.image_url,
                     published,
                     a.source,
                     a.channel_id
@@ -79,7 +94,7 @@ impl Cache {
     pub fn list_channel(&self, channel_id: &str, limit: usize) -> Result<Vec<Article>> {
         let mut stmt = self.conn.prepare(
             r#"
-            SELECT url, title, summary, published_rfc3339, source, channel_id
+            SELECT url, title, summary, image_url, published_rfc3339, source, channel_id
             FROM articles
             WHERE channel_id = ?1
             ORDER BY published_rfc3339 IS NULL, published_rfc3339 DESC
@@ -87,7 +102,7 @@ impl Cache {
             "#,
         )?;
         let rows = stmt.query_map(params![channel_id, limit as i64], |row| {
-            let published_s: Option<String> = row.get(3)?;
+            let published_s: Option<String> = row.get(4)?;
             let published = published_s
                 .as_deref()
                 .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
@@ -96,9 +111,10 @@ impl Cache {
                 url: row.get(0)?,
                 title: row.get(1)?,
                 summary: row.get(2)?,
+                image_url: row.get(3)?,
                 published,
-                source: row.get(4)?,
-                channel_id: row.get(5)?,
+                source: row.get(5)?,
+                channel_id: row.get(6)?,
             })
         })?;
         let mut out = Vec::new();
