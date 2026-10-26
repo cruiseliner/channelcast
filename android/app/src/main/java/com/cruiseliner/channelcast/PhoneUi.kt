@@ -36,6 +36,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -84,6 +85,10 @@ fun PhoneChannelCastScreen(
     var weather by remember { mutableStateOf<FfiWeatherDashboard?>(null) }
     var weatherError by remember { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableStateOf(0) }
+    // Keep-alive caches: tab switches reuse fresh content; pull-to-refresh forces fetch.
+    val headlinesCache = remember { mutableStateMapOf<String, TimedCache<List<FfiHeadline>>>() }
+    var weatherCache by remember { mutableStateOf<TimedCache<FfiWeatherDashboard>?>(null) }
+    var lastHandledRefreshTick by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         try {
@@ -105,25 +110,39 @@ fun PhoneChannelCastScreen(
 
     LaunchedEffect(selectedId, refreshTick) {
         val id = selectedId ?: return@LaunchedEffect
-        loading = true
+        val forceRefresh = refreshTick != lastHandledRefreshTick
+        if (forceRefresh) lastHandledRefreshTick = refreshTick
         headlinesError = null
         weatherError = null
+
         if (id == "weather") {
             headlines = emptyList()
+            val hit = weatherCache
+            if (!forceRefresh && hit != null && hit.isFresh()) {
+                weather = hit.value
+                loading = false
+                refreshing = false
+                Log.i("ChannelCast", "phone weather cache hit (age=${System.currentTimeMillis() - hit.fetchedAtMs}ms)")
+                return@LaunchedEffect
+            }
+            // Keep showing stale weather while refreshing when we have it.
+            if (hit != null) weather = hit.value
+            loading = weather == null
             try {
                 val dash = withContext(Dispatchers.IO) { fetchWeather() }
                 weather = dash
+                weatherCache = TimedCache(dash)
                 Log.i(
                     "ChannelCast",
                     "phone fetchWeather -> ${dash.now.temperatureF}F hourly=${dash.hourly.size} graphics=${dash.graphics.size} tropical=${dash.tropical.size}",
                 )
             } catch (e: ChannelCastFfiException) {
                 weatherError = e.message ?: e.toString()
-                weather = null
+                if (weather == null) weather = null
                 Log.e("ChannelCast", "phone fetchWeather failed", e)
             } catch (e: Throwable) {
                 weatherError = e.message ?: e.toString()
-                weather = null
+                if (weather == null) weather = null
                 Log.e("ChannelCast", "phone fetchWeather crashed", e)
             } finally {
                 loading = false
@@ -131,11 +150,21 @@ fun PhoneChannelCastScreen(
             }
             return@LaunchedEffect
         }
-        weather = null
-        headlines = emptyList()
+
+        val hit = headlinesCache[id]
+        if (!forceRefresh && hit != null && hit.isFresh()) {
+            headlines = hit.value
+            loading = false
+            refreshing = false
+            Log.i("ChannelCast", "phone headlines cache hit for $id (age=${System.currentTimeMillis() - hit.fetchedAtMs}ms)")
+            return@LaunchedEffect
+        }
+        if (hit != null) headlines = hit.value else headlines = emptyList()
+        loading = headlines.isEmpty()
         try {
             val items = withContext(Dispatchers.IO) { fetchHeadlines(id, 40u) }
             headlines = items
+            headlinesCache[id] = TimedCache(items)
             val withImg = items.count { !it.imageUrl.isNullOrBlank() }
             Log.i("ChannelCast", "phone fetchHeadlines($id) -> ${items.size} (images=$withImg)")
         } catch (e: ChannelCastFfiException) {

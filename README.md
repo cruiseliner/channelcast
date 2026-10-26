@@ -1,5 +1,11 @@
 # ChannelCast
 
+## What's new in v0.1.20 (Android)
+
+- **MLB graphicast crop:** cover-crop (Fit B) now anchors **left** (`Alignment.CenterStart`) so titles like "Coastal Hazards Outlook" / "Dangerous Boating Conditions" keep their leading letters (center-crop was clipping them).
+- **Tab keep-alive:** channel + weather content cached in memory for **10 minutes**; switching tabs reuses fresh cache instead of re-fetching. Pull-to-refresh (phone) / Refresh (TV) still forces a fetch.
+- Release: [v0.1.20-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.20-android)
+
 ## What's new in v0.1.19 (Android)
 
 - **Weather tab (live):** B2 stack — Now + hourly + 3-day (NWS MLB / ZIP 32920) with real NWS condition icons, then cover-cropped official MLB graphicast hazard maps (wind/coastal/gale when active). NHC tropical map + advisory only when Atlantic/Caribbean/Florida interest exists (hidden when empty).
@@ -114,7 +120,7 @@ egui/eframe shell — channel list + headlines; opens articles in your browser.
 
 ### Android (TV + phone)
 
-Debug APKs on [v0.1.19-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.19-android):
+Debug APKs on [v0.1.20-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.20-android):
 
 | Device | Asset | Package (debug) |
 |--------|-------|-----------------|

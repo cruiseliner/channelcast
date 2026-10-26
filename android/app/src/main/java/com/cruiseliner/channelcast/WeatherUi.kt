@@ -46,7 +46,7 @@ import uniffi.channelcast_ffi.FfiWeatherTropical
 
 /**
  * Weather tab B2 stack for phone (and reusable pieces for TV):
- * Now → hourly → 3-day → cover-cropped MLB graphicast hazards → optional NHC tropical.
+ * Now → hourly → 3-day → left-anchored cover-crop MLB graphicast hazards → optional NHC tropical.
  * Condition icons are live NWS icon PNGs (sun / cloud / rain glyphs), never placeholder dots.
  */
 @Composable
@@ -357,11 +357,13 @@ private fun HazardGraphicCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
-            // Fit B: cover-crop official MLB PNG to phone width.
+            // Fit B cover-crop, but anchor LEFT so MLB titles/labels stay visible
+            // (center-crop was eating the leading letters on wide graphicast PNGs).
             AsyncImage(
                 model = graphic.imageUrl,
                 contentDescription = graphic.title,
                 contentScale = ContentScale.Crop,
+                alignment = Alignment.CenterStart,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 10f),
@@ -408,6 +410,7 @@ private fun TropicalCard(
                 model = tropical.imageUrl,
                 contentDescription = tropical.title,
                 contentScale = ContentScale.Crop,
+                alignment = Alignment.CenterStart,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 10f),

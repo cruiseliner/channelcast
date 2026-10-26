@@ -43,6 +43,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -275,6 +276,9 @@ fun ChannelCastScreen(
     var weatherError by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf("Loading channels…") }
     var refreshTick by remember { mutableStateOf(0) }
+    val headlinesCache = remember { mutableStateMapOf<String, TimedCache<List<FfiHeadline>>>() }
+    var weatherCache by remember { mutableStateOf<TimedCache<FfiWeatherDashboard>?>(null) }
+    var lastHandledRefreshTick by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         try {
@@ -301,26 +305,37 @@ fun ChannelCastScreen(
 
     LaunchedEffect(selectedId, refreshTick) {
         val id = selectedId ?: return@LaunchedEffect
-        loading = true
+        val forceRefresh = refreshTick != lastHandledRefreshTick
+        if (forceRefresh) lastHandledRefreshTick = refreshTick
         headlinesError = null
         weatherError = null
         selectedHeadline = null
-        status = "Fetching $id…"
+
         if (id == "weather") {
             headlines = emptyList()
+            val hit = weatherCache
+            if (!forceRefresh && hit != null && hit.isFresh()) {
+                weather = hit.value
+                loading = false
+                status = "Weather · cached · ${hit.value.now.temperatureF}°"
+                Log.i("ChannelCast", "tv weather cache hit")
+                return@LaunchedEffect
+            }
+            if (hit != null) weather = hit.value
+            loading = weather == null
+            status = "Fetching weather…"
             try {
                 val dash = withContext(Dispatchers.IO) { fetchWeather() }
                 weather = dash
+                weatherCache = TimedCache(dash)
                 status = "Weather · ${dash.now.temperatureF}° ${dash.now.condition}"
                 Log.i("ChannelCast", "fetchWeather -> ${dash.now.temperatureF}F graphics=${dash.graphics.size}")
             } catch (e: ChannelCastFfiException) {
                 weatherError = e.message ?: e.toString()
-                weather = null
                 status = "Weather fetch failed"
                 Log.e("ChannelCast", "fetchWeather failed", e)
             } catch (e: Throwable) {
                 weatherError = e.message ?: e.toString()
-                weather = null
                 status = "Weather fetch crashed"
                 Log.e("ChannelCast", "fetchWeather crashed", e)
             } finally {
@@ -328,13 +343,24 @@ fun ChannelCastScreen(
             }
             return@LaunchedEffect
         }
-        weather = null
-        headlines = emptyList()
+
+        val hit = headlinesCache[id]
+        if (!forceRefresh && hit != null && hit.isFresh()) {
+            headlines = hit.value
+            loading = false
+            status = "$id · cached · ${hit.value.size} headlines"
+            Log.i("ChannelCast", "tv headlines cache hit for $id")
+            return@LaunchedEffect
+        }
+        if (hit != null) headlines = hit.value else headlines = emptyList()
+        loading = headlines.isEmpty()
+        status = "Fetching $id…"
         try {
             val items = withContext(Dispatchers.IO) {
                 fetchHeadlines(id, 40u)
             }
             headlines = items
+            headlinesCache[id] = TimedCache(items)
             status = "$id · ${items.size} headlines"
             Log.i("ChannelCast", "fetchHeadlines($id) -> ${items.size}")
             items.take(3).forEach {
