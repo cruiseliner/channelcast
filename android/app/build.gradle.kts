@@ -12,8 +12,8 @@ android {
         applicationId = "com.cruiseliner.channelcast"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
-        versionName = "0.1.21-android"
+        versionCode = 22
+        versionName = "0.1.22-android"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")

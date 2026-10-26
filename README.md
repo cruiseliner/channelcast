@@ -1,5 +1,11 @@
 # ChannelCast
 
+## What's new in v0.1.22 (Android)
+
+- **No more cancel flash:** tab switches / composition leave no longer show red `The coroutine scope left the composition` — `CancellationException` is ignored as a UI error (phone + TV).
+- **Background tab loads:** fetches run in a process-scoped coordinator so leaving a tab cancels only the UI await; the network work still fills the 10-minute cache for the next open.
+- Release: [v0.1.22-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.22-android)
+
 ## What's new in v0.1.21 (Android)
 
 - **Channel order:** Top → **Weather** → Local → Space Coast → Markets → Tech → Entertainment → Pro Wrestling → Watchman (Weather moved from last to 2nd).
@@ -127,7 +133,7 @@ egui/eframe shell — channel list + headlines; opens articles in your browser.
 
 ### Android (TV + phone)
 
-Debug APKs on [v0.1.20-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.20-android):
+Debug APKs on [v0.1.22-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.22-android):
 
 | Device | Asset | Package (debug) |
 |--------|-------|-----------------|

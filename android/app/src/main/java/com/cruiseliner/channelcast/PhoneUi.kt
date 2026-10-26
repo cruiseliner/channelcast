@@ -52,12 +52,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import uniffi.channelcast_ffi.ChannelCastFfiException
 import uniffi.channelcast_ffi.FfiChannel
 import uniffi.channelcast_ffi.FfiHeadline
 import uniffi.channelcast_ffi.FfiWeatherDashboard
-import uniffi.channelcast_ffi.fetchHeadlines
-import uniffi.channelcast_ffi.fetchWeather
 import uniffi.channelcast_ffi.listChannels
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -96,12 +93,10 @@ fun PhoneChannelCastScreen(
                     ?: listed.firstOrNull()?.id
             }
             Log.i("ChannelCast", "phone listChannels -> ${listed.size}")
-        } catch (e: ChannelCastFfiException) {
+        } catch (e: Throwable) {
+            if (e.isCoroutineCancellation()) throw e
             channelsError = e.message ?: e.toString()
             Log.e("ChannelCast", "phone listChannels failed", e)
-        } catch (e: Throwable) {
-            channelsError = e.message ?: e.toString()
-            Log.e("ChannelCast", "phone listChannels crashed", e)
         }
     }
 
@@ -126,20 +121,28 @@ fun PhoneChannelCastScreen(
             if (hit != null) weather = hit.value
             loading = weather == null
             try {
-                val dash = withContext(Dispatchers.IO) { fetchWeather() }
-                weather = dash
-                TabCacheStore.putWeather(dash)
-                Log.i(
-                    "ChannelCast",
-                    "phone fetchWeather -> ${dash.now.temperatureF}F hourly=${dash.hourly.size} graphics=${dash.graphics.size} tropical=${dash.tropical.size}",
+                val result = TabLoadCoordinator.loadWeather(forceRefresh).await()
+                result.fold(
+                    onSuccess = { dash ->
+                        weather = dash
+                        Log.i(
+                            "ChannelCast",
+                            "phone fetchWeather -> ${dash.now.temperatureF}F hourly=${dash.hourly.size} graphics=${dash.graphics.size} tropical=${dash.tropical.size}",
+                        )
+                    },
+                    onFailure = { e ->
+                        if (e.isCoroutineCancellation()) return@fold
+                        weatherError = e.message ?: e.toString()
+                        Log.e("ChannelCast", "phone fetchWeather failed", e)
+                    },
                 )
-            } catch (e: ChannelCastFfiException) {
-                weatherError = e.message ?: e.toString()
-                if (weather == null) weather = null
-                Log.e("ChannelCast", "phone fetchWeather failed", e)
             } catch (e: Throwable) {
+                // Tab switch / composition leave — never surface as UI error.
+                if (e.isCoroutineCancellation()) {
+                    Log.i("ChannelCast", "phone weather await cancelled (scope left)")
+                    throw e
+                }
                 weatherError = e.message ?: e.toString()
-                if (weather == null) weather = null
                 Log.e("ChannelCast", "phone fetchWeather crashed", e)
             } finally {
                 loading = false
@@ -159,15 +162,24 @@ fun PhoneChannelCastScreen(
         if (hit != null) headlines = hit.value else headlines = emptyList()
         loading = headlines.isEmpty()
         try {
-            val items = withContext(Dispatchers.IO) { fetchHeadlines(id, 40u) }
-            headlines = items
-            TabCacheStore.putHeadlines(id, items)
-            val withImg = items.count { !it.imageUrl.isNullOrBlank() }
-            Log.i("ChannelCast", "phone fetchHeadlines($id) -> ${items.size} (images=$withImg)")
-        } catch (e: ChannelCastFfiException) {
-            headlinesError = e.message ?: e.toString()
-            Log.e("ChannelCast", "phone fetchHeadlines($id) failed", e)
+            val result = TabLoadCoordinator.loadHeadlines(id, forceRefresh).await()
+            result.fold(
+                onSuccess = { items ->
+                    headlines = items
+                    val withImg = items.count { !it.imageUrl.isNullOrBlank() }
+                    Log.i("ChannelCast", "phone fetchHeadlines($id) -> ${items.size} (images=$withImg)")
+                },
+                onFailure = { e ->
+                    if (e.isCoroutineCancellation()) return@fold
+                    headlinesError = e.message ?: e.toString()
+                    Log.e("ChannelCast", "phone fetchHeadlines($id) failed", e)
+                },
+            )
         } catch (e: Throwable) {
+            if (e.isCoroutineCancellation()) {
+                Log.i("ChannelCast", "phone headlines await cancelled for $id (scope left)")
+                throw e
+            }
             headlinesError = e.message ?: e.toString()
             Log.e("ChannelCast", "phone fetchHeadlines($id) crashed", e)
         } finally {

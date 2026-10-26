@@ -55,12 +55,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import uniffi.channelcast_ffi.ChannelCastFfiException
 import uniffi.channelcast_ffi.FfiChannel
 import uniffi.channelcast_ffi.FfiHeadline
 import uniffi.channelcast_ffi.FfiWeatherDashboard
-import uniffi.channelcast_ffi.fetchHeadlines
-import uniffi.channelcast_ffi.fetchWeather
 import uniffi.channelcast_ffi.listChannels
 
 /**
@@ -290,14 +287,11 @@ fun ChannelCastScreen(
                     ?: listed.firstOrNull()?.id
             }
             Log.i("ChannelCast", "listChannels -> ${listed.size}")
-        } catch (e: ChannelCastFfiException) {
+        } catch (e: Throwable) {
+            if (e.isCoroutineCancellation()) throw e
             channelsError = e.message ?: e.toString()
             status = "Channel list failed"
             Log.e("ChannelCast", "listChannels failed", e)
-        } catch (e: Throwable) {
-            channelsError = e.message ?: e.toString()
-            status = "Native bridge failed"
-            Log.e("ChannelCast", "listChannels crashed", e)
         }
     }
 
@@ -323,18 +317,27 @@ fun ChannelCastScreen(
             loading = weather == null
             status = "Fetching weather…"
             try {
-                val dash = withContext(Dispatchers.IO) { fetchWeather() }
-                weather = dash
-                TabCacheStore.putWeather(dash)
-                status = "Weather · ${dash.now.temperatureF}° ${dash.now.condition}"
-                Log.i("ChannelCast", "fetchWeather -> ${dash.now.temperatureF}F graphics=${dash.graphics.size}")
-            } catch (e: ChannelCastFfiException) {
+                val result = TabLoadCoordinator.loadWeather(forceRefresh).await()
+                result.fold(
+                    onSuccess = { dash ->
+                        weather = dash
+                        status = "Weather · ${dash.now.temperatureF}° ${dash.now.condition}"
+                        Log.i("ChannelCast", "fetchWeather -> ${dash.now.temperatureF}F graphics=${dash.graphics.size}")
+                    },
+                    onFailure = { e ->
+                        if (e.isCoroutineCancellation()) return@fold
+                        weatherError = e.message ?: e.toString()
+                        status = "Weather fetch failed"
+                        Log.e("ChannelCast", "fetchWeather failed", e)
+                    },
+                )
+            } catch (e: Throwable) {
+                if (e.isCoroutineCancellation()) {
+                    Log.i("ChannelCast", "tv weather await cancelled (scope left)")
+                    throw e
+                }
                 weatherError = e.message ?: e.toString()
                 status = "Weather fetch failed"
-                Log.e("ChannelCast", "fetchWeather failed", e)
-            } catch (e: Throwable) {
-                weatherError = e.message ?: e.toString()
-                status = "Weather fetch crashed"
                 Log.e("ChannelCast", "fetchWeather crashed", e)
             } finally {
                 loading = false
@@ -354,23 +357,30 @@ fun ChannelCastScreen(
         loading = headlines.isEmpty()
         status = "Fetching $id…"
         try {
-            val items = withContext(Dispatchers.IO) {
-                fetchHeadlines(id, 40u)
+            val result = TabLoadCoordinator.loadHeadlines(id, forceRefresh).await()
+            result.fold(
+                onSuccess = { items ->
+                    headlines = items
+                    status = "$id · ${items.size} headlines"
+                    Log.i("ChannelCast", "fetchHeadlines($id) -> ${items.size}")
+                    items.take(3).forEach {
+                        Log.i("ChannelCast", "  · ${it.title}")
+                    }
+                },
+                onFailure = { e ->
+                    if (e.isCoroutineCancellation()) return@fold
+                    headlinesError = e.message ?: e.toString()
+                    status = "Fetch failed for $id"
+                    Log.e("ChannelCast", "fetchHeadlines($id) failed", e)
+                },
+            )
+        } catch (e: Throwable) {
+            if (e.isCoroutineCancellation()) {
+                Log.i("ChannelCast", "tv headlines await cancelled for $id (scope left)")
+                throw e
             }
-            headlines = items
-            TabCacheStore.putHeadlines(id, items)
-            status = "$id · ${items.size} headlines"
-            Log.i("ChannelCast", "fetchHeadlines($id) -> ${items.size}")
-            items.take(3).forEach {
-                Log.i("ChannelCast", "  · ${it.title}")
-            }
-        } catch (e: ChannelCastFfiException) {
             headlinesError = e.message ?: e.toString()
             status = "Fetch failed for $id"
-            Log.e("ChannelCast", "fetchHeadlines($id) failed", e)
-        } catch (e: Throwable) {
-            headlinesError = e.message ?: e.toString()
-            status = "Fetch crashed for $id"
             Log.e("ChannelCast", "fetchHeadlines($id) crashed", e)
         } finally {
             loading = false
