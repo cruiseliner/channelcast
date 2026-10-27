@@ -1,5 +1,10 @@
 # ChannelCast
 
+## What's new in v0.1.23 (Android)
+
+- Florida Today subscriber cookie enrich path for TV/phone: place `floridatoday.cookies` in app `filesDir` (or `/sdcard/Download/` for cold-start copy). Titles still work without a cookie.
+- Native `.so` rebuild includes cookie lookup from cbe813a.
+
 ## What's new in v0.1.22 (Android)
 
 - **No more cancel flash:** tab switches / composition leave no longer show red `The coroutine scope left the composition` — `CancellationException` is ignored as a UI error (phone + TV).
@@ -133,7 +138,7 @@ egui/eframe shell — channel list + headlines; opens articles in your browser.
 
 ### Android (TV + phone)
 
-Debug APKs on [v0.1.22-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.22-android):
+Debug APKs: build locally for **v0.1.23-android** (Florida Today cookie path); prior release [v0.1.22-android](https://github.com/cruiseliner/channelcast/releases/tag/v0.1.22-android):
 
 | Device | Asset | Package (debug) |
 |--------|-------|-----------------|
