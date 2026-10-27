@@ -9,8 +9,12 @@ use crate::model::Article;
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Utc};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
+
+/// Process-wide cookie override (Android FFI / tests). Checked before env/files.
+static RUNTIME_COOKIE: Mutex<Option<String>> = Mutex::new(None);
 
 const USER_AGENT: &str =
     "ChannelCast/0.1 (+https://github.com/cruiseliner/channelcast; personal subscriber use)";
@@ -38,13 +42,44 @@ fn is_sitemap_url(url: &str) -> bool {
     url.to_ascii_lowercase().contains("news-sitemap.xml")
 }
 
+/// Install a process-wide subscriber Cookie (raw `Cookie` header value).
+///
+/// Empty / whitespace clears the override. Used by Android UniFFI and tests.
+/// Prefer this on Android — env vars and `~/.channelcast` are not available there.
+pub fn set_runtime_cookie(cookie: Option<&str>) {
+    let mut slot = RUNTIME_COOKIE.lock().unwrap_or_else(|e| e.into_inner());
+    *slot = cookie
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| strip_cookie_prefix(s));
+}
+
+/// True when a non-empty runtime cookie override is installed.
+pub fn has_runtime_cookie() -> bool {
+    RUNTIME_COOKIE
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .map(|s| !s.is_empty())
+        .unwrap_or(false)
+}
+
 /// Resolve optional subscriber Cookie header.
 ///
 /// Precedence:
-/// 1. `CHANNELCAST_FLORIDATODAY_COOKIE` — raw `Cookie` header value
-/// 2. `CHANNELCAST_FLORIDATODAY_COOKIE_FILE` — path to Netscape cookie file or raw header
-/// 3. `.channelcast/floridatoday.cookies` (cwd) or `~/.channelcast/floridatoday.cookies`
+/// 1. Runtime override (`set_runtime_cookie` / Android FFI)
+/// 2. `CHANNELCAST_FLORIDATODAY_COOKIE` — raw `Cookie` header value
+/// 3. `CHANNELCAST_FLORIDATODAY_COOKIE_FILE` — path to Netscape cookie file or raw header
+/// 4. `.channelcast/floridatoday.cookies` (cwd), `floridatoday.cookies`,
+///    `~/.channelcast/floridatoday.cookies`, and Android app `files/floridatoday.cookies`
 pub fn resolve_cookie() -> Option<String> {
+    if let Ok(guard) = RUNTIME_COOKIE.lock() {
+        if let Some(ref c) = *guard {
+            if !c.is_empty() {
+                return Some(c.clone());
+            }
+        }
+    }
     if let Ok(v) = std::env::var("CHANNELCAST_FLORIDATODAY_COOKIE") {
         let t = v.trim().to_string();
         if !t.is_empty() {
@@ -74,6 +109,20 @@ fn default_cookie_paths() -> Vec<PathBuf> {
     ];
     if let Some(home) = std::env::var_os("HOME") {
         out.push(PathBuf::from(home).join(".channelcast/floridatoday.cookies"));
+    }
+    // Android app private filesDir (same UID as this .so). Debug + release, TV + phone.
+    for pkg in [
+        "com.cruiseliner.channelcast.tv.debug",
+        "com.cruiseliner.channelcast.debug",
+        "com.cruiseliner.channelcast.tv",
+        "com.cruiseliner.channelcast",
+    ] {
+        out.push(PathBuf::from(format!(
+            "/data/data/{pkg}/files/floridatoday.cookies"
+        )));
+        out.push(PathBuf::from(format!(
+            "/data/user/0/{pkg}/files/floridatoday.cookies"
+        )));
     }
     out
 }
@@ -704,5 +753,18 @@ www.floridatoday.com\tFALSE\t/\tTRUE\t0\tsession-id\txyz
         assert!(h.contains("gup_anon=abc123"));
         assert!(h.contains("session-id=xyz"));
         assert!(!h.contains("other=nope"));
+    }
+
+    #[test]
+    fn runtime_cookie_overrides_and_clears() {
+        set_runtime_cookie(Some("Cookie: ft_sess=abc; other=1"));
+        assert!(has_runtime_cookie());
+        let got = resolve_cookie().expect("runtime cookie");
+        assert_eq!(got, "ft_sess=abc; other=1");
+        set_runtime_cookie(Some("   "));
+        assert!(!has_runtime_cookie());
+        // May still resolve from env/file on the machine; just ensure clear worked.
+        set_runtime_cookie(None);
+        assert!(!has_runtime_cookie());
     }
 }

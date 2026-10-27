@@ -67,6 +67,8 @@ import uniffi.channelcast_ffi.listChannels
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Optional FT subscriber jar → filesDir for Rust full-text enrich.
+        SubscriberCookies.ensurePrivateCopy(this)
         val initial = channelIdFromIntent(intent)
         val television = isTelevision()
         // Edge-to-edge helps phone (S25) status/nav insets; harmless on TV.

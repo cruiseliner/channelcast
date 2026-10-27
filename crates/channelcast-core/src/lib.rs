@@ -20,7 +20,9 @@ pub use config::{filter_by_keywords, Channel, ChannelConfig};
 pub use error::{Error, Result};
 pub use fetch::{fetch_channel_feeds, fetch_feed, parse_feed_bytes};
 pub use floridatoday::{
-    is_floridatoday_url, parse_article_body_bytes, parse_listing_bytes, parse_sitemap_bytes,
+    has_runtime_cookie as floridatoday_has_runtime_cookie, is_floridatoday_url,
+    parse_article_body_bytes, parse_listing_bytes, parse_sitemap_bytes, resolve_cookie as floridatoday_resolve_cookie,
+    set_runtime_cookie as floridatoday_set_runtime_cookie,
 };
 pub use usatoday::{
     filter_for_url as usatoday_filter_for_url, is_usatoday_url,

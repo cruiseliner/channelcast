@@ -280,9 +280,24 @@ export CHANNELCAST_FLORIDATODAY_COOKIE='name=value; other=value'
 export CHANNELCAST_FLORIDATODAY_COOKIE_FILE="$HOME/.channelcast/floridatoday.cookies"
 ```
 
-Precedence: `CHANNELCAST_FLORIDATODAY_COOKIE` → `CHANNELCAST_FLORIDATODAY_COOKIE_FILE` → `.channelcast/floridatoday.cookies` → `~/.channelcast/floridatoday.cookies`.
+Precedence: runtime override → `CHANNELCAST_FLORIDATODAY_COOKIE` → `CHANNELCAST_FLORIDATODAY_COOKIE_FILE` → `.channelcast/floridatoday.cookies` → `~/.channelcast/floridatoday.cookies` → Android `files/floridatoday.cookies`.
 
 If no cookie is found, ChannelCast logs a short note and still returns listing/sitemap titles (other feeds on the channel keep working).
+
+### Android TV / phone (sideload)
+
+1. Export the Cookie the same way as above (Netscape `cookies.txt` or raw `Cookie` header).
+2. Push into the app private files dir (debuggable APK):
+
+```bash
+adb push floridatoday.cookies /sdcard/Download/floridatoday.cookies
+# TV debug:
+adb shell run-as com.cruiseliner.channelcast.tv.debug   cp /sdcard/Download/floridatoday.cookies files/floridatoday.cookies
+# Phone debug:
+adb shell run-as com.cruiseliner.channelcast.debug   cp /sdcard/Download/floridatoday.cookies files/floridatoday.cookies
+```
+
+3. Force-stop and reopen ChannelCast (or pull-to-refresh Local / Space Coast). Cold start also copies from `/sdcard/Download/floridatoday.cookies` into `filesDir` when the private copy is missing.
 
 **Never commit** `*.cookies`, `.channelcast/`, or `.env` files. The public CLI does not automate password login.
 

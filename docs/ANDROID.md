@@ -138,6 +138,26 @@ ABIs: **arm64-v8a** (S25 Ultra + modern Android TV) and **armeabi-v7a**.
 4. **Next:** Sideload TV APK + wire launcher News pill on Adam’s TCL
 5. **Later:** Compose for TV / leanback rows, release signing, CI APK job with NDK
 
+
+## Florida Today full-text cookie (optional)
+
+Local / Space Coast already show Florida Today **titles** without auth. To enrich summaries with fuller article body text behind the subscriber paywall:
+
+1. Sign in at floridatoday.com in a desktop browser.
+2. Export cookies for `floridatoday.com` (extension → Netscape `cookies.txt`, or DevTools → copy the request `Cookie` header into a file).
+3. Push onto the device and into the app files dir:
+
+```bash
+adb push floridatoday.cookies /sdcard/Download/floridatoday.cookies
+adb shell run-as com.cruiseliner.channelcast.tv.debug \
+  cp /sdcard/Download/floridatoday.cookies files/floridatoday.cookies
+# phone: com.cruiseliner.channelcast.debug
+```
+
+4. Relaunch ChannelCast. Rust reads `files/floridatoday.cookies` automatically; without the file, behavior is unchanged (titles only).
+
+Never commit the cookie file. See also README § Personal Florida Today.
+
 ## License
 
 Same MIT as the repo root.
